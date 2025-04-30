@@ -65,17 +65,17 @@ class FastAuth:
     """
     secret_key: str = 'your-secret-key'
     algorithm: str = "HS256"
-    access_token_expires_in: int = 15
+    access_token_expires_in: int = 30
     refresh_token_expires_in: int = 7  # days
     engine: SQLModel = None
     session: Session = Session(engine)
-    user_model: User = User
+    user_model: SQLModel = User
     pwd_context: CryptContext = None
     oauth2_scheme: OAuth2 = None
     use_cookie: bool = False
 
 
-    def __init__(self, secret_key: str, algorithm: str, user_model: User, engine: SQLModel, use_cookie: bool = False, token_url: str = "token", access_token_expires_in: int = 15, refresh_token_expires_in: int = 7):
+    def __init__(self, secret_key: str,engine: SQLModel, algorithm: str = "HS256",user_model: SQLModel = User, use_cookie: bool = True, token_url: str = "token", access_token_expires_in: int = 30, refresh_token_expires_in: int = 7):
         """Initialize the FastAuth instance.
         
         Args:
@@ -332,7 +332,7 @@ class FastAuth:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
         return current_user
         
-    def get_auth_router(self, session_getter: Callable[[], Session]) -> APIRouter:
+    def get_auth_router(self, session_getter: Callable[[], Session] = self.session) -> APIRouter:
         """Generate a router with all authentication routes.
         
         This provides a simple way to add all authentication endpoints to your FastAPI app.

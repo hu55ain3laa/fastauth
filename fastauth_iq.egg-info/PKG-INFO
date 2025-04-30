@@ -1,15 +1,24 @@
 Metadata-Version: 2.4
 Name: fastauth_iq
-Version: 0.1.0
+Version: 0.1.1
 Summary: A comprehensive authentication library for FastAPI with JWT and cookie support
 Home-page: https://github.com/hu55ain3laa/fastauth
 Author: Hussein Ghadhban
 Author-email: ala.1995@yahoo.com
+Keywords: fastapi,authentication,jwt,oauth2,sqlmodel,token
 Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
 Classifier: License :: OSI Approved :: MIT License
 Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
 Classifier: Framework :: FastAPI
-Requires-Python: >=3.8
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Internet :: WWW/HTTP :: Session
+Requires-Python: >=3.9
 Description-Content-Type: text/markdown
 Requires-Dist: fastapi>=0.104.0
 Requires-Dist: sqlmodel>=0.0.8
@@ -24,6 +33,7 @@ Dynamic: classifier
 Dynamic: description
 Dynamic: description-content-type
 Dynamic: home-page
+Dynamic: keywords
 Dynamic: requires-dist
 Dynamic: requires-python
 Dynamic: summary
@@ -40,18 +50,17 @@ A comprehensive authentication library for FastAPI applications with JWT-based a
 - **SQLModel integration** for easy database operations
 - **Ready-to-use authentication routes** with minimal setup
 - **Password hashing** with bcrypt
-- **Role-based access control** (customizable)
 
 ## Installation
 
 ```bash
-pip install fastauth
+pip install fastauth_iq
 ```
 
 Or install from source:
 
 ```bash
-git clone https://github.com/yourusername/fastauth.git
+git clone https://github.com/hu55ain3laa/fastauth.git
 cd fastauth
 pip install -e .
 ```
@@ -77,7 +86,8 @@ class User(SQLModel, table=True):
 
 ```python
 from fastapi import FastAPI, Depends
-from sqlmodel import create_engine, Session
+from sqlmodel import create_engine, Session, SQLModel
+# Import FastAuth directly - the package is installed as fastauth_iq but imported as fastauth
 from fastauth import FastAuth
 from myapp.models import User
 
