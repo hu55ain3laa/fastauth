@@ -1,0 +1,7 @@
+fastapi>=0.104.0
+sqlmodel>=0.0.8
+pydantic>=2.5.2
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+python-multipart>=0.0.6
+pyjwt>=2.6.0
