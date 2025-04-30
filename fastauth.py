@@ -332,7 +332,7 @@ class FastAuth:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
         return current_user
         
-    def get_auth_router(self, session_getter: Callable[[], Session] = self.session) -> APIRouter:
+    def get_auth_router(self, session_getter: Optional[Callable[[], Session]] = None) -> APIRouter:
         """Generate a router with all authentication routes.
         
         This provides a simple way to add all authentication endpoints to your FastAPI app.
@@ -343,6 +343,11 @@ class FastAuth:
         Returns:
             APIRouter: A router with login, refresh, register, and user info endpoints
         """
+        # Use self.session as default if no session_getter provided
+        if session_getter is None:
+            # Create a function that returns self.session
+            session_getter = lambda: self.session
+            
         router = APIRouter()
         
         # Login endpoint to get access token
