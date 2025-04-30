@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="fastauth_iq",
-    version="0.1.5",
+    version="0.1.6",
     packages=find_packages(),  # This will find all packages, including fastauth_iq
     py_modules=["fastauth", "User"],  # Include module files at root level
     install_requires=[
