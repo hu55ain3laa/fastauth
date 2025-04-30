@@ -1,3 +1,4 @@
+# Import directly from module files
 from .fastauth import FastAuth, OAuth2PasswordBearerWithCookie
 from .User import User, Token, TokenData, UserCreate, UserRead, UserUpdate, UserDelete, UserLogin
 
