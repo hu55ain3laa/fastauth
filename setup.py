@@ -2,9 +2,9 @@ from setuptools import setup, find_packages
 
 setup(
     name="fastauth_iq",
-    version="0.1.0",
-    packages=find_packages(),
-    py_modules=["fastauth", "User"],
+    version="0.1.1",
+    packages=find_packages(),  # This will find all packages, including fastauth_iq
+    py_modules=["fastauth", "User"],  # Include module files at root level
     install_requires=[
         "fastapi>=0.104.0",
         "sqlmodel>=0.0.8",
@@ -22,9 +22,18 @@ setup(
     url="https://github.com/hu55ain3laa/fastauth",
     classifiers=[
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
+        "Development Status :: 4 - Beta",
+        "Intended Audience :: Developers",
         "Framework :: FastAPI",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+        "Topic :: Internet :: WWW/HTTP :: Session",
     ],
-    python_requires=">=3.8",
+    keywords=["fastapi", "authentication", "jwt", "oauth2", "sqlmodel", "token"],
+    python_requires=">=3.9",
 )
