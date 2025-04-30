@@ -1,3 +1,43 @@
+Metadata-Version: 2.4
+Name: fastauth_iq
+Version: 0.2.0
+Summary: A comprehensive authentication library for FastAPI with JWT and cookie support
+Home-page: https://github.com/hu55ain3laa/fastauth
+Author: Hussein Ghadhban
+Author-email: ala.1995@yahoo.com
+Keywords: fastapi,authentication,jwt,oauth2,sqlmodel,token
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Framework :: FastAPI
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Internet :: WWW/HTTP :: Session
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.104.0
+Requires-Dist: sqlmodel>=0.0.8
+Requires-Dist: pydantic>=2.5.2
+Requires-Dist: passlib[bcrypt]>=1.7.4
+Requires-Dist: python-jose[cryptography]>=3.3.0
+Requires-Dist: python-multipart>=0.0.6
+Requires-Dist: pyjwt>=2.6.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
 # FastAuth
 
 A comprehensive authentication library for FastAPI applications with JWT-based authentication and SQLModel integration. Now with a modular architecture for better maintainability and extensibility.

@@ -1,11 +1,18 @@
 """
 Example FastAPI application using FastAuth for authentication.
 Run with: uvicorn example:app --reload
+
+This example shows both the legacy and recommended import methods.
 """
 from fastapi import FastAPI, Depends
 from sqlmodel import create_engine, SQLModel, Session
-from User import User
-from fastauth import FastAuth
+
+# Import directly from fastauth package
+from fastauth import FastAuth, User
+
+# The old direct import from fastauth.py still works but will issue a deprecation warning
+# from fastauth import FastAuth  # from fastauth.py
+# from User import User
 
 # Create FastAPI app
 app = FastAPI(title="FastAuth Example App")
@@ -15,7 +22,8 @@ DATABASE_URL = "sqlite:///./example.db"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
 # Create tables on startup
-def create_db_and_tables():
+@app.on_event("startup")
+def on_startup():
     SQLModel.metadata.create_all(engine)
 
 # Session dependency
@@ -41,34 +49,24 @@ auth_router = auth.get_auth_router(get_session)
 # Include the auth router in your app
 app.include_router(auth_router, tags=["authentication"])
 
-# Register startup event to create database tables
-@app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
-
-# Example protected route
-@app.get("/protected", tags=["example"])
-def protected_route(current_user = Depends(auth.get_current_active_user_dependency())):
+# Protected route example - requires authentication
+@app.get("/protected", tags=["protected"])
+async def protected_route(current_user = Depends(auth.get_current_active_user_dependency())):
+    """
+    This route is protected and requires a valid JWT token.
+    The token can be provided via:
+    1. Cookie (if use_cookie=True)
+    2. Authorization header with Bearer scheme
+    """
     return {
-        "message": f"Hello, {current_user.username}! This is a protected resource.",
-        "user_info": {
-            "username": current_user.username,
-            "email": current_user.email,
-            "active": not current_user.disabled
-        }
+        "message": "This is a protected route",
+        "user": current_user.username
     }
 
 # Public route
-@app.get("/", tags=["example"])
-def home():
-    return {
-        "message": "Welcome to FastAuth Example App",
-        "docs": "/docs",
-        "available_endpoints": [
-            "POST /token - Login and get tokens",
-            "POST /token/refresh - Refresh access token",
-            "POST /users - Register new user",
-            "GET /users/me - Get current user info",
-            "GET /protected - Example protected resource"
-        ]
-    }
+@app.get("/", tags=["public"])
+async def root():
+    """
+    This is a public route that doesn't require authentication.
+    """
+    return {"message": "Welcome to the FastAuth example app. Try /docs to see the API."}
