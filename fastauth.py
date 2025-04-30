@@ -75,18 +75,18 @@ class FastAuth:
     use_cookie: bool = False
 
 
-    def __init__(self, secret_key: str,engine: SQLModel, algorithm: str = "HS256",user_model: SQLModel = User, use_cookie: bool = True, token_url: str = "token", access_token_expires_in: int = 30, refresh_token_expires_in: int = 7):
+    def __init__(self, secret_key: str, engine: SQLModel, algorithm: str = "HS256", use_cookie: bool = True, token_url: str = "token", access_token_expires_in: int = 30, refresh_token_expires_in: int = 7, user_model: SQLModel = User):
         """Initialize the FastAuth instance.
         
         Args:
             secret_key (str): Secret key for JWT encoding/decoding
-            algorithm (str): Algorithm for JWT signing
-            user_model (User): User model class for database operations
             engine (SQLModel): SQLModel engine for database operations
-            use_cookie (bool, optional): Enable cookie-based authentication. Defaults to False.
+            algorithm (str, optional): Algorithm for JWT signing. Defaults to "HS256".
+            use_cookie (bool, optional): Enable cookie-based authentication. Defaults to True.
             token_url (str, optional): URL for token endpoint. Defaults to "token".
-            access_token_expires_in (int, optional): Access token expiration in minutes. Defaults to 15.
+            access_token_expires_in (int, optional): Access token expiration in minutes. Defaults to 30.
             refresh_token_expires_in (int, optional): Refresh token expiration in days. Defaults to 7.
+            user_model (User, optional): User model class for database operations. Defaults to User.
         """
         self.secret_key = secret_key
         self.algorithm = algorithm

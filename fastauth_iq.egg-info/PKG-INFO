@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: fastauth_iq
-Version: 0.1.1
+Version: 0.1.2
 Summary: A comprehensive authentication library for FastAPI with JWT and cookie support
 Home-page: https://github.com/hu55ain3laa/fastauth
 Author: Hussein Ghadhban
