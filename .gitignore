@@ -1,1 +1,5 @@
-.__pycache__
+__pycache__/*
+.env
+.*.db
+fastauth_iq.egg-info/*
+
