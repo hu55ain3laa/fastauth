@@ -1,5 +1,44 @@
-__pycache__/*
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+venv/
+env/
+ENV/
 .env
-.*.db
-fastauth_iq.egg-info/*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+
+# Local development
+.DS_Store
+.python-version
+
+# Project specific
+example.db
 

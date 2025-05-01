@@ -36,7 +36,7 @@ class OAuth2PasswordBearerWithCookie(OAuth2):
         # If no token in cookie, fall back to Authorization header
         if not token:
             authorization = request.headers.get("Authorization")
-            scheme, token = get_authorization_scheme_param(authorization)
+            scheme, param = get_authorization_scheme_param(authorization)
             if not authorization or scheme.lower() != "bearer":
                 if self.auto_error:
                     raise HTTPException(
@@ -46,6 +46,16 @@ class OAuth2PasswordBearerWithCookie(OAuth2):
                     )
                 else:
                     return None
+            token = param
+            
+        # Don't return None when token exists but is empty
+        if not token and self.auto_error:
+            raise HTTPException(
+                status_code=HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+            
         return token
 
 

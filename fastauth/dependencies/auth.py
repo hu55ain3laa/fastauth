@@ -30,6 +30,13 @@ class AuthDependencies:
                 headers={"WWW-Authenticate": "Bearer"},
             )
             
+            # Special handling for debugging cookie authentication issues
+            # Log the token we received for troubleshooting
+            print(f"Auth dependency received token: {token[:20]}..." if token else "No token received")
+            
+            if not token:
+                raise credentials_exception
+                
             try:
                 # Use token manager to verify the token
                 payload = self.auth.token_manager.verify_token(token, expected_type="access")
@@ -39,7 +46,9 @@ class AuthDependencies:
                     raise credentials_exception
                     
                 token_data = TokenData(username=username)
-            except Exception:
+            except Exception as e:
+                # Add more detailed error information for debugging
+                print(f"Token verification failed: {str(e)}")
                 raise credentials_exception
                 
             user = self.auth.get_user(self.auth.session, username=token_data.username)
