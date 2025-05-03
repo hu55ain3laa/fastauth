@@ -1,43 +1,3 @@
-Metadata-Version: 2.4
-Name: fastauth_iq
-Version: 0.2.2
-Summary: A comprehensive authentication and authorization library for FastAPI with JWT, cookie support, and role-based access control
-Home-page: https://github.com/hu55ain3laa/fastauth
-Author: Hussein Ghadhban
-Author-email: ala.1995@yahoo.com
-Keywords: fastapi,authentication,authorization,rbac,role-based,jwt,oauth2,sqlmodel,token
-Classifier: Programming Language :: Python :: 3
-Classifier: Programming Language :: Python :: 3.9
-Classifier: Programming Language :: Python :: 3.10
-Classifier: Programming Language :: Python :: 3.11
-Classifier: Programming Language :: Python :: 3.12
-Classifier: License :: OSI Approved :: MIT License
-Classifier: Operating System :: OS Independent
-Classifier: Development Status :: 4 - Beta
-Classifier: Intended Audience :: Developers
-Classifier: Framework :: FastAPI
-Classifier: Topic :: Software Development :: Libraries :: Python Modules
-Classifier: Topic :: Internet :: WWW/HTTP :: Session
-Requires-Python: >=3.9
-Description-Content-Type: text/markdown
-Requires-Dist: fastapi>=0.104.0
-Requires-Dist: sqlmodel>=0.0.8
-Requires-Dist: pydantic>=2.5.2
-Requires-Dist: passlib[bcrypt]>=1.7.4
-Requires-Dist: python-jose[cryptography]>=3.3.0
-Requires-Dist: python-multipart>=0.0.6
-Requires-Dist: pyjwt>=2.6.0
-Dynamic: author
-Dynamic: author-email
-Dynamic: classifier
-Dynamic: description
-Dynamic: description-content-type
-Dynamic: home-page
-Dynamic: keywords
-Dynamic: requires-dist
-Dynamic: requires-python
-Dynamic: summary
-
 # FastAuth
 
 A comprehensive authentication library for FastAPI applications with JWT-based authentication, role-based authorization, and SQLModel integration. Featuring a modular architecture for better maintainability and extensibility.
@@ -49,6 +9,7 @@ A comprehensive authentication library for FastAPI applications with JWT-based a
 - **Cookie-based authentication** option
 - **Token refresh mechanism** for extended sessions
 - **SQLModel integration** for easy database operations
+- **CLI utilities** for database initialization and management
 - **Ready-to-use authentication routes** with minimal setup
 - **Password hashing** with bcrypt
 - **Modular architecture** for better code organization and extensibility
@@ -116,7 +77,9 @@ auth = FastAuth(
 )
 
 # Initialize database (choose ONE of these approaches):
-# Option 1: Using the CLI tool before starting the application 
+# Option 1: Using the CLI tool before starting the application (new in v0.3.0)
+#   fastauth app.py                   # Auto-detect settings from your app file
+#   # Or use explicit parameters
 #   fastauth --db-url="sqlite:///./app.db" --secret-key="your-secret-key"
 #
 # Option 2: Initializing during application startup
@@ -137,7 +100,7 @@ def on_startup():
 auth_router = auth.get_auth_router(get_session)
 app.include_router(auth_router, tags=["authentication"])
 
-# Add role management routes (new in v0.3.0)
+# Add role management routes (new in v0.2.2)
 role_router = auth.get_role_router()
 app.include_router(role_router, tags=["roles"])
 ```
@@ -248,28 +211,47 @@ MIT
 
 FastAuth offers two approaches for database initialization: via command-line tool or programmatically during application startup. Choose the approach that best fits your workflow.
 
-### Option 1: Initialization via CLI
+### Option 1: Initialization via CLI (new in v0.3.0)
 
 Using the command-line tool separates database setup from application startup, which is ideal for production environments.
 
 ### Using the CLI Tool
 
 ```bash
-# Initialize everything (database, roles, superadmin) with defaults
+# Just provide your app file - FastAuth will extract settings automatically
+fastauth example.py
+
+# Or use the traditional approach
 fastauth --db-url="sqlite:///./app.db" --secret-key="your-secret-key"
 
 # Customize the superadmin credentials
-fastauth --db-url="sqlite:///./app.db" --secret-key="your-secret-key" \
-    --username="admin" --password="secure_password"
+fastauth example.py --username="admin" --password="secure_password"
 
 # Run specific initialization steps
-fastauth --db-url="sqlite:///./app.db" --secret-key="your-secret-key" \
-    --init-db --init-roles --create-superadmin
+fastauth example.py --init-db --init-roles --create-superadmin
 ```
 
 The CLI tool will prompt for credentials if not provided, with defaults:
 - Username: `superadmin`
 - Password: `admin123`
+
+### Setting up your Application File for Auto-Detection
+
+When using the `fastauth example.py` syntax, FastAuth auto-detects database URL and secret key settings from your file. Use these formats for automatic detection:
+
+```python
+# Database URL - any of these formats will be detected
+DATABASE_URL = "sqlite:///./app.db"
+database_url = "sqlite:///./app.db"
+db_url = "sqlite:///./app.db"
+engine = create_engine("sqlite:///./app.db")
+
+# Secret Key - any of these formats will be detected
+SECRET_KEY = "your-secret-key-here"
+secret_key = "your-secret-key-here"
+```
+
+These patterns are case-sensitive. If FastAuth cannot detect your settings, you can still provide them with the `--db-url` and `--secret-key` flags.
 
 ### Standard Roles
 

@@ -1,4 +1,4 @@
-from typing import Optional, Callable, Type, Dict, Any
+from typing import Optional, Callable, Type, Dict, Any, Union, List
 from fastapi import Depends, HTTPException, status, Request, Response, APIRouter
 from fastapi.security import OAuth2PasswordBearer, OAuth2, OAuth2PasswordRequestForm
 from sqlmodel import SQLModel, Session, select
@@ -9,9 +9,13 @@ from starlette.status import HTTP_401_UNAUTHORIZED
 from fastauth.security.password import PasswordManager
 from fastauth.security.tokens import TokenManager
 from fastauth.dependencies.auth import AuthDependencies
+from fastauth.dependencies.roles import RoleDependencies
 from fastauth.routers.auth import AuthRouter
-from fastauth.models.user import User
+from fastauth.routers.roles import RoleRouter
+from fastauth.models.user import User, UserRole
+from fastauth.models.role import Role, RoleCreate
 from fastauth.models.tokens import Token, TokenData
+from fastauth.cli import create_superadmin, initialize_roles
 
 
 class OAuth2PasswordBearerWithCookie(OAuth2):
@@ -117,6 +121,10 @@ class FastAuth:
         # Setup dependencies and routers
         self.dependencies = AuthDependencies(self)
         self.router = AuthRouter(self)
+        
+        # Initialize role dependencies after auth dependencies
+        self.role_dependencies = RoleDependencies(self.dependencies)
+        self.role_router = RoleRouter(self.role_dependencies)
 
     def get_user(self, session: Session, username: str):
         """Get a user from the database by username.
@@ -220,3 +228,95 @@ class FastAuth:
             APIRouter: Router with auth endpoints
         """
         return self.router.get_router(session_getter)
+        
+    def get_role_router(self):
+        """Get a router with role management endpoints.
+        
+        Returns:
+            APIRouter: Router with role endpoints
+        """
+        return self.role_router.router
+        
+    def require_roles(self, required_roles):
+        """Get a FastAPI dependency that requires specific roles.
+        
+        Args:
+            required_roles: List of role names required to access the endpoint
+            
+        Returns:
+            callable: A dependency that validates if the user has any of the required roles
+        """
+        return self.role_dependencies.require_roles(required_roles)
+        
+    def require_all_roles(self, required_roles):
+        """Get a FastAPI dependency that requires all specified roles.
+        
+        Args:
+            required_roles: List of role names, all of which are required
+            
+        Returns:
+            callable: A dependency that validates if the user has all required roles
+        """
+        return self.role_dependencies.require_all_roles(required_roles)
+        
+    def is_admin(self):
+        """Get a FastAPI dependency that requires the 'admin' role.
+        
+        Returns:
+            callable: A dependency that validates if the user has admin role
+        """
+        return self.role_dependencies.is_admin()
+        
+    def get_role_manager(self):
+        """Get a RoleManager instance as a FastAPI dependency.
+        
+        Returns:
+            callable: A dependency that provides a RoleManager
+        """
+        return self.role_dependencies.get_role_manager()
+        
+    def initialize_db(self, create_tables: bool = True, init_roles: bool = True, create_admin: bool = True, 
+                     admin_username: Optional[str] = None, admin_password: Optional[str] = None):
+        """Initialize the database with tables and optionally create initial roles and admin user.
+        
+        Args:
+            create_tables: Whether to create database tables
+            init_roles: Whether to initialize standard roles
+            create_admin: Whether to create superadmin user
+            admin_username: Optional username for superadmin (will prompt if None and interactive)
+            admin_password: Optional password for superadmin (will prompt if None and interactive)
+            
+        Returns:
+            dict: Initialization results
+        """
+        results = {}
+        
+        if create_tables:
+            from sqlmodel import SQLModel
+            SQLModel.metadata.create_all(self.engine)
+            results["tables_created"] = True
+            
+        if init_roles:
+            initialize_roles(self)
+            results["roles_initialized"] = True
+            
+        if create_admin:
+            admin_user_info = create_superadmin(self, username=admin_username, password=admin_password)
+            results["superadmin_created"] = (admin_user_info is not None)
+            results["superadmin_username"] = admin_user_info.get("username") if admin_user_info else None
+            results["superadmin_is_new"] = admin_user_info.get("is_new", False) if admin_user_info else False
+            
+        return results
+    
+    def create_superadmin(self, username: Optional[str] = None, password: Optional[str] = None):
+        """Create a superadmin user if one does not exist.
+        
+        Args:
+            username: Optional username (will prompt if not provided and interactive)
+            password: Optional password (will prompt if not provided and interactive)
+            
+        Returns:
+            dict: Information about the created or existing superadmin user
+            Contains keys: id, username, email, is_new
+        """
+        return create_superadmin(self, username=username, password=password)

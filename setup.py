@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="fastauth_iq",
-    version="0.2.1",
+    version="0.3.0",
     packages=find_packages(),
     py_modules=["User"],  # Include legacy module for backward compatibility
     install_requires=[
@@ -16,7 +16,7 @@ setup(
     ],
     author="Hussein Ghadhban",
     author_email="ala.1995@yahoo.com",
-    description="A comprehensive authentication library for FastAPI with JWT and cookie support",
+    description="A comprehensive authentication and authorization library for FastAPI with JWT, cookie support, role-based access control, and automatic database initialization",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/hu55ain3laa/fastauth",
@@ -34,6 +34,17 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: Internet :: WWW/HTTP :: Session",
     ],
-    keywords=["fastapi", "authentication", "jwt", "oauth2", "sqlmodel", "token"],
+    keywords=["fastapi", "authentication", "authorization", "rbac", "role-based", "jwt", "oauth2", "sqlmodel", "token", "cli", "database-initialization"],
     python_requires=">=3.9",
+    entry_points={
+        "console_scripts": [
+            "fastauth=fastauth.cli:main",
+        ],
+    },
+    include_package_data=True,
+    project_urls={
+        "Bug Reports": "https://github.com/hu55ain3laa/fastauth/issues",
+        "Source": "https://github.com/hu55ain3laa/fastauth",
+        "Documentation": "https://github.com/hu55ain3laa/fastauth/README.md",
+    },
 )

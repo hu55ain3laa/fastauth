@@ -1,10 +1,20 @@
-from typing import Optional
+from typing import Optional, List, Any
 from pydantic import BaseModel
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
+
+
+class UserRole(SQLModel, table=True):
+    """Association table for many-to-many relationship between users and roles."""
+    __tablename__ = "user_role"
+    
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id", primary_key=True)
+    role_id: Optional[int] = Field(default=None, foreign_key="role.id", primary_key=True)
 
 
 class User(SQLModel, table=True):
     """Base user model for database operations."""
+    __tablename__ = "user"
+    
     id: int = Field(primary_key=True)
     username: str = Field(unique=True, index=True)
     email: str = Field(unique=True)
@@ -18,6 +28,14 @@ class UserRead(BaseModel):
     username: str
     email: str
     disabled: bool
+    
+    class Config:
+        from_attributes = True
+
+
+class UserReadWithRoles(UserRead):
+    """Pydantic model for user data including roles."""
+    roles: List[Any] = []
     
     class Config:
         from_attributes = True

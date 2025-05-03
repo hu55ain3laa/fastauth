@@ -1,13 +1,44 @@
-# FastAuth
+# FastAuth 
 
-A comprehensive authentication library for FastAPI applications with JWT-based authentication and SQLModel integration. Now with a modular architecture for better maintainability and extensibility.
+A comprehensive authentication and authorization library for FastAPI applications with JWT-based authentication, role-based authorization, and SQLModel integration.
+
+[![PyPI version](https://badge.fury.io/py/fastauth-iq.svg)](https://badge.fury.io/py/fastauth-iq)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Authentication](#authentication)
+  - [Login and Token Management](#login-and-token-management)
+  - [Protected Routes](#protected-routes)
+  - [Cookie-Based Authentication](#cookie-based-authentication)
+- [Database Initialization](#database-initialization)
+  - [CLI Initialization](#cli-initialization-new-in-v030)
+  - [Programmatic Initialization](#programmatic-initialization)
+- [Role-Based Authorization](#role-based-authorization)
+  - [Standard Roles](#standard-roles)
+  - [Role Requirements](#role-requirements)
+  - [Role Management API](#role-management-api)
+- [API Reference](#api-reference)
+  - [Authentication Endpoints](#authentication-endpoints)
+  - [Role Management Endpoints](#role-management-endpoints)
+- [Advanced Usage](#advanced-usage)
+  - [Custom User Models](#custom-user-models)
+  - [Custom Authentication Logic](#custom-authentication-logic)
+- [Security Best Practices](#security-best-practices)
+- [Project Structure](#project-structure)
+- [License](#license)
 
 ## Features
 
 - **OAuth2 and JWT authentication** built-in
+- **Role-based authorization** system
 - **Cookie-based authentication** option
 - **Token refresh mechanism** for extended sessions
 - **SQLModel integration** for easy database operations
+- **CLI utilities** for database initialization and management (new in v0.3.0)
 - **Ready-to-use authentication routes** with minimal setup
 - **Password hashing** with bcrypt
 - **Modular architecture** for better code organization and extensibility
@@ -74,58 +105,281 @@ auth = FastAuth(
     refresh_token_expires_in=7   # days
 )
 
+# Initialize database (choose ONE of these approaches):
+# Option 1: Using the CLI tool before starting the application (new in v0.3.0)
+#   fastauth app.py                   # Auto-detect settings from your app file
+#   # Or use explicit parameters
+#   fastauth --db-url="sqlite:///./app.db" --secret-key="your-secret-key"
+#
+# Option 2: Initializing during application startup
+INIT_DB_ON_STARTUP = True  # Set to False to disable
+
+@app.on_event("startup")
+def on_startup():
+    if INIT_DB_ON_STARTUP:
+        auth.initialize_db(
+            create_tables=True,         # Create database tables
+            init_roles=True,            # Initialize standard roles
+            create_admin=True,          # Create superadmin if needed
+            admin_username="superadmin", # Default username
+            admin_password="admin123"    # Default password
+        )
+
 # Add all authentication routes automatically
 auth_router = auth.get_auth_router(get_session)
 app.include_router(auth_router, tags=["authentication"])
+
+# Add role management routes (new in v0.2.2)
+role_router = auth.get_role_router()
+app.include_router(role_router, tags=["roles"])
 ```
 
 ### 3. Protect Your Routes
 
 ```python
+# Require authentication only
 @app.get("/protected")
 def protected_route(current_user = Depends(auth.get_current_active_user_dependency())):
     return {"message": f"Hello, {current_user.username}!"}
+
+# Require specific roles (any of the listed roles)
+@app.get("/admin-or-moderator")
+def admin_or_mod_route(current_user = Depends(auth.require_roles(["admin", "moderator"]))):
+    return {"message": f"Hello privileged user, {current_user.username}!"}
+
+# Require all listed roles
+@app.get("/admin-and-verified")
+def admin_and_verified_route(current_user = Depends(auth.require_all_roles(["admin", "verified"]))):
+    return {"message": f"Hello admin with verification, {current_user.username}!"}
+
+# Shortcut for admin-only routes
+@app.get("/admin-only")
+def admin_only_route(current_user = Depends(auth.is_admin())):
+    return {"message": f"Hello admin, {current_user.username}!"}
 ```
 
-## Available Authentication Endpoints
+## Authentication
 
-The `get_auth_router()` method automatically adds these endpoints to your application:
+### Login and Token Management
+
+FastAuth implements JWT-based authentication with both access tokens and refresh tokens:
+
+- **Access tokens** are short-lived (default: 30 minutes) and used for regular API access
+- **Refresh tokens** are long-lived (default: 7 days) and used to obtain new access tokens
+
+User authentication flow:
+
+1. User submits credentials to `/token` endpoint
+2. Server validates credentials and returns access + refresh tokens
+3. Client uses access token for API requests (via header or cookie)
+4. When access token expires, client uses refresh token to get a new one from `/token/refresh`
+
+### Protected Routes
+
+To protect a route, use FastAuth's dependencies:
+
+```python
+# Basic authentication - any valid user
+@app.get("/protected")
+def protected_route(user = Depends(auth.get_current_active_user_dependency())):
+    return {"message": "Protected content", "user": user.username}
+```
+
+### Cookie-Based Authentication
+
+FastAuth supports both header-based and cookie-based authentication:
+
+```python
+# Enable cookie-based auth when creating FastAuth instance
+auth = FastAuth(
+    # ... other parameters ...
+    use_cookie=True
+)
+```
+
+With cookie-based auth enabled:
+- The `/token` endpoint will set HTTP-only cookies with the tokens
+- Protected routes will check for tokens in cookies if not found in headers
+- The cookie approach is more secure for browser-based applications
+
+## Database Initialization
+
+### CLI Initialization (new in v0.3.0)
+
+FastAuth provides a convenient CLI tool for database initialization, which is ideal for production environments.
+
+```bash
+# Just provide your app file - FastAuth will extract settings automatically
+fastauth example.py
+
+# Or use the traditional approach
+fastauth --db-url="sqlite:///./app.db" --secret-key="your-secret-key"
+
+# Customize the superadmin credentials
+fastauth example.py --username="admin" --password="secure_password"
+
+# Run specific initialization steps
+fastauth example.py --init-db --init-roles --create-superadmin
+```
+
+The CLI tool will prompt for credentials if not provided, with defaults:
+- Username: `superadmin`
+- Password: `admin123`
+
+#### Setting up your Application File for Auto-Detection
+
+When using the `fastauth example.py` syntax, FastAuth auto-detects database URL and secret key settings from your file. Use these formats for automatic detection:
+
+```python
+# Database URL - any of these formats will be detected
+DATABASE_URL = "sqlite:///./app.db"
+database_url = "sqlite:///./app.db"
+db_url = "sqlite:///./app.db"
+engine = create_engine("sqlite:///./app.db")
+
+# Secret Key - any of these formats will be detected
+SECRET_KEY = "your-secret-key-here"
+secret_key = "your-secret-key-here"
+```
+
+These patterns are case-sensitive. If FastAuth cannot detect your settings, you can still provide them with the `--db-url` and `--secret-key` flags.
+
+### Programmatic Initialization
+
+You can also initialize the database programmatically during application startup, which is simpler for development environments:
+
+```python
+# Initialize during application startup
+@app.on_event("startup")
+def on_startup():
+    auth.initialize_db(
+        create_tables=True,         # Create database tables
+        init_roles=True,            # Initialize standard roles
+        create_admin=True,          # Create superadmin if needed
+        admin_username="superadmin", # Default username
+        admin_password="admin123"    # Default password
+    )
+```
+
+You can also create a superadmin user programmatically at any time:
+
+```python
+# Create a superadmin user with default credentials
+auth.create_superadmin()
+
+# Or with custom credentials
+auth.create_superadmin(username="admin", password="secure_password")
+```
+
+## Role-Based Authorization
+
+FastAuth includes a robust role-based authorization system:
+
+### Standard Roles
+
+The initialization creates these standard roles:
+- `superadmin`: Super administrator with all privileges
+- `admin`: Administrator with management privileges
+- `moderator`: User with content moderation privileges 
+- `premium`: Premium tier user
+- `verified`: Verified user
+- `user`: Standard user with basic privileges
+
+### Role Requirements
+
+FastAuth provides flexible role-based access control:
+
+```python
+# Require any of these roles (OR condition)
+@app.get("/admin-or-moderator")
+def admin_route(user = Depends(auth.require_roles(["admin", "moderator"]))):
+    return {"message": "Admin or moderator area"}
+
+# Require all of these roles (AND condition)
+@app.get("/premium-and-verified")
+def premium_verified_route(user = Depends(auth.require_all_roles(["premium", "verified"]))):
+    return {"message": "Premium and verified area"}
+
+# Shortcut for admin-only routes
+@app.get("/admin-only")
+def admin_only(user = Depends(auth.is_admin())):
+    return {"message": "Admin only area"}
+```
+
+### Role Management API
+
+FastAuth provides a complete API for role management:
+
+```python
+# Get the role router and include it in your app
+role_router = auth.get_role_router()
+app.include_router(role_router, tags=["roles"])
+```
+
+This adds these role management endpoints:
+- **POST /roles/** - Create a new role (admin only)
+- **GET /roles/** - Get all roles 
+- **GET /roles/{role_id}** - Get a role by ID
+- **PUT /roles/{role_id}** - Update a role (admin only)
+- **DELETE /roles/{role_id}** - Delete a role (admin only)
+- **POST /roles/assign/{user_id}/{role_id}** - Assign a role to a user (admin only)
+- **DELETE /roles/assign/{user_id}/{role_id}** - Remove a role from a user (admin only)
+- **GET /roles/user/{user_id}** - Get all roles for a user
+
+## API Reference
+
+### Authentication Endpoints
+
+The `auth_router` adds these endpoints:
 
 - **POST /token** - Get access and refresh tokens with username/password
 - **POST /token/refresh** - Get a new access token using a refresh token
 - **POST /users** - Register a new user
 - **GET /users/me** - Get the current authenticated user's information
 
-## Customization Options
+### Role Management Endpoints
 
-### Cookie-Based Authentication
+The `role_router` adds these endpoints:
 
-Enable cookie-based authentication by setting `use_cookie=True`:
+- **GET /roles** - List all roles
+- **POST /roles** - Create a new role (admin only)
+- **GET /roles/{role_id}** - Get a role by ID
+- **PUT /roles/{role_id}** - Update a role (admin only)
+- **DELETE /roles/{role_id}** - Delete a role (admin only)
+- **POST /roles/assign/{user_id}/{role_id}** - Assign a role to a user (admin only)
+- **DELETE /roles/assign/{user_id}/{role_id}** - Remove a role from a user (admin only)
+- **GET /roles/user/{user_id}** - Get all roles for a user
+
+## Advanced Usage
+
+### Custom User Models
+
+You can use a custom user model with FastAuth:
 
 ```python
+class CustomUser(SQLModel, table=True):
+    id: int = Field(primary_key=True)
+    username: str = Field(unique=True)
+    email: str = Field(unique=True)
+    hashed_password: str
+    disabled: bool = Field(default=False)
+    # Additional fields...
+    first_name: str = Field(default="")
+    last_name: str = Field(default="")
+
+# Pass your custom model to FastAuth
 auth = FastAuth(
-    # ... other parameters
-    use_cookie=True
+    # ... other parameters ...
+    user_model=CustomUser
 )
 ```
 
-### Custom Token Expiration
+### Custom Authentication Logic
 
-Set custom expiration times for tokens:
-
-```python
-auth = FastAuth(
-    # ... other parameters
-    access_token_expires_in=60,  # 60 minutes
-    refresh_token_expires_in=30  # 30 days
-)
-```
-
-### Advanced Usage: Custom Authentication Routes
-
-You can create your own authentication routes instead of using the built-in router:
+You can customize the authentication logic:
 
 ```python
+# Custom authentication routes
 @app.post("/custom-login")
 async def custom_login(
     username: str, 
@@ -142,36 +396,38 @@ async def custom_login(
 
 ## Security Best Practices
 
-1. **Always use HTTPS** in production
-2. **Use a strong secret key** and keep it secure
-3. **Set appropriate token expiration times**
-4. **Enable httpOnly and secure flags** for cookies
-5. **Consider implementing rate limiting** for authentication endpoints
+When using FastAuth in your applications, consider these security recommendations:
+
+1. **Deploy your FastAPI app with HTTPS** in production environments
+2. **Use a strong secret key** for FastAuth and store it securely (e.g., environment variables)
+3. **Configure appropriate token expiration times** based on your security requirements
+4. **Keep secure cookie settings** when using cookie-based authentication (FastAuth sets `httpOnly=True` which prevents JavaScript from accessing cookies, protecting against XSS attacks)
+5. **Consider implementing rate limiting** on your authentication endpoints to prevent brute force attacks
+
+## Project Structure
+
+FastAuth follows a modular architecture for better maintainability:
+
+```
+fastauth/
+├── core/           # Core functionality
+│   ├── auth.py     # The main FastAuth class
+│   ├── password.py # Password management
+│   └── tokens.py   # Token generation and validation
+├── models/         # Data models
+│   ├── user.py     # User models and schemas
+│   ├── role.py     # Role models for authorization
+│   └── tokens.py   # Token data models
+├── routers/        # Route handlers for auth and roles
+├── dependencies/   # FastAPI dependencies for auth and roles
+└── utils/          # Utility functions and helpers
+```
+
+This modular structure makes it easier to:
+- Understand the codebase
+- Extend or customize functionality
+- Test individual components
 
 ## License
 
 MIT
-
-## Modular Architecture
-
-With version 0.2.0, FastAuth has been refactored into a modular architecture to improve maintainability, testability, and extensibility. The code is now organized into specialized modules:
-
-```
-fastauth/
-├── core/       # Core FastAuth class and OAuth2 implementation
-├── security/   # Password management and token handling
-├── models/     # User and token data models
-├── routers/    # Authentication route handlers
-├── dependencies/ # FastAPI dependencies for authentication
-└── utils/      # Utility functions and helpers
-```
-
-This modular structure makes it easier to:
-- Understand and modify specific parts of the library
-- Write targeted tests for each component
-- Extend functionality with new features
-- Reuse components in other projects
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.

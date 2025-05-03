@@ -2,15 +2,19 @@ README.md
 User.py
 setup.py
 fastauth/__init__.py
+fastauth/cli.py
 fastauth/core/__init__.py
 fastauth/core/auth.py
 fastauth/dependencies/__init__.py
 fastauth/dependencies/auth.py
+fastauth/dependencies/roles.py
 fastauth/models/__init__.py
+fastauth/models/role.py
 fastauth/models/tokens.py
 fastauth/models/user.py
 fastauth/routers/__init__.py
 fastauth/routers/auth.py
+fastauth/routers/roles.py
 fastauth/security/__init__.py
 fastauth/security/password.py
 fastauth/security/tokens.py
@@ -19,5 +23,6 @@ fastauth/utils/session.py
 fastauth_iq.egg-info/PKG-INFO
 fastauth_iq.egg-info/SOURCES.txt
 fastauth_iq.egg-info/dependency_links.txt
+fastauth_iq.egg-info/entry_points.txt
 fastauth_iq.egg-info/requires.txt
 fastauth_iq.egg-info/top_level.txt
