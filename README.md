@@ -1,13 +1,15 @@
-# FastAuth
+<div align="center">
+  <img src="FastAuth.svg" alt="FastAuth Logo" width="250">
 
-<img src="FastAuth.svg" alt="FastAuth Logo" width="200">
+  <p>A comprehensive authentication and authorization library for FastAPI applications<br>with JWT-based authentication, role-based authorization, and SQLModel integration.</p>
+</div>
 
-A comprehensive authentication and authorization library for FastAPI applications with JWT-based authentication, role-based authorization, and SQLModel integration.
+<div align="center">
+  <a href="https://badge.fury.io/py/fastauth-iq"><img src="https://badge.fury.io/py/fastauth-iq.svg" alt="PyPI version"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
 
-[![PyPI version](https://badge.fury.io/py/fastauth-iq.svg)](https://badge.fury.io/py/fastauth-iq)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-📖 **[Full Documentation Available Here](https://hu55ain3laa.github.io/fastauth/)**
+  <h3>📖 <a href="https://hu55ain3laa.github.io/fastauth/">Full Documentation Available Here</a></h3>
+</div>
 
 ## Documentation
 
