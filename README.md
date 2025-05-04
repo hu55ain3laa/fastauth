@@ -1,9 +1,17 @@
-# FastAuth 
+# FastAuth
+
+<img src="FastAuth.svg" alt="FastAuth Logo" width="200">
 
 A comprehensive authentication and authorization library for FastAPI applications with JWT-based authentication, role-based authorization, and SQLModel integration.
 
 [![PyPI version](https://badge.fury.io/py/fastauth-iq.svg)](https://badge.fury.io/py/fastauth-iq)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+📖 **[Full Documentation Available Here](https://hu55ain3laa.github.io/fastauth/)**
+
+## Documentation
+
+This README provides a quick overview of FastAuth. For a more complete, interactive documentation with live examples and responsive design, visit our **[GitHub Pages Documentation](https://hu55ain3laa.github.io/fastauth/)**.
 
 ## Table of Contents
 

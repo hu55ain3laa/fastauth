@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="fastauth_iq",
-    version="0.3.0",
+    version="0.3.1",
     packages=find_packages(),
     py_modules=["User"],  # Include legacy module for backward compatibility
     install_requires=[
@@ -45,6 +45,6 @@ setup(
     project_urls={
         "Bug Reports": "https://github.com/hu55ain3laa/fastauth/issues",
         "Source": "https://github.com/hu55ain3laa/fastauth",
-        "Documentation": "https://github.com/hu55ain3laa/fastauth/README.md",
+        "Documentation": "https://hu55ain3laa.github.io/fastauth/",
     },
 )

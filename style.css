@@ -1,0 +1,199 @@
+:root {
+  --primary-color: #05988a;
+  --primary-dark: #037b70;
+  --primary-light: #e6f7f5;
+  --primary-very-light: #f0faf9;
+
+  /* Light mode colors */
+  --bg-main: #f9fafb;
+  --bg-card: rgba(255, 255, 255, 0.7);
+  --bg-card-solid: #ffffff;
+  --text-main: #1f2937;
+  --text-secondary: #4b5563;
+  --border-color: #e5e7eb;
+  --code-bg: #1f2937;
+  --code-text: #f9fafb;
+}
+
+/* Dark mode colors */
+.dark {
+  --bg-main: #111827;
+  --bg-card: rgba(17, 24, 39, 0.7);
+  --bg-card-solid: #1f2937;
+  --text-main: #f9fafb;
+  --text-secondary: #d1d5db;
+  --border-color: #374151;
+  --code-bg: #0f172a;
+  --code-text: #f9fafb;
+}
+html {
+  scroll-padding-top: 4rem;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+}
+
+/* Mobile navbar styling */
+#mobile-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  #mobile-nav {
+    display: block;
+  }
+  
+  /* Add padding to body to account for fixed navbar */
+  body {
+    padding-top: 50px;
+  }
+  
+  /* Adjust header for mobile nav */
+  header {
+    padding-top: 3.5rem !important;
+    margin-top: 0.5rem;
+  }
+}
+.code-block {
+  border-radius: 0.5rem;
+  margin: 1.5rem 0;
+}
+.toc-container {
+  position: sticky;
+  top: 2rem;
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+}
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+  transition: all 0.3s ease;
+}
+.btn-primary:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(5, 152, 138, 0.15);
+}
+.btn-outline {
+  border: 1px solid var(--primary-color);
+  color: var(--primary-color);
+  transition: all 0.3s ease;
+}
+
+.dark .white-logo {
+  /* Make sure logo is white in dark mode */
+  filter: brightness(0) invert(1) !important;
+}
+
+/* Apply to code blocks */
+.code-block {
+  background-color: var(--code-bg);
+  color: var(--code-text);
+}
+
+.theme-toggle {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 50;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.05);
+}
+
+/* Responsive container padding */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+  }
+}
+
+/* Ensure content stays contained on mobile */
+@media (max-width: 480px) {
+  .container {
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+  }
+  
+  /* Adjust header padding for mobile */
+  header {
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+  }
+  
+  /* Fix code blocks on mobile */
+  pre[class*="language-"] {
+    border-radius: 0.375rem;
+    margin: 1rem -0.5rem !important;
+    padding: 1rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  /* Improve hero code example readability on mobile */
+  header pre[class*="language-"] {
+    font-size: 0.7rem !important;
+    line-height: 1.4 !important;
+  }
+  
+  /* Better spacing for mobile hero */
+  header .flex-col {
+    gap: 1.5rem;
+  }
+}
+.btn-outline:hover {
+  background-color: var(--primary-light);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(5, 152, 138, 0.1);
+}
+/* Make the logo white in header and footer */
+.white-logo {
+  filter: brightness(0) invert(1);
+}
+.section-divider {
+  height: 4px;
+  background: var(--primary-color);
+  width: 60px;
+  margin: 1rem 0 2rem 0;
+}
+.hero-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2306b5a5' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.hero-badge {
+  transition: all 0.3s ease;
+}
+.hero-badge:hover {
+  transform: translateY(-3px);
+}
+.floating {
+  animation: float 6s ease-in-out infinite;
+}
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
