@@ -1,13 +1,13 @@
 Metadata-Version: 2.4
 Name: fastauth_iq
-Version: 0.3.0
+Version: 0.3.1
 Summary: A comprehensive authentication and authorization library for FastAPI with JWT, cookie support, role-based access control, and automatic database initialization
 Home-page: https://github.com/hu55ain3laa/fastauth
 Author: Hussein Ghadhban
 Author-email: ala.1995@yahoo.com
 Project-URL: Bug Reports, https://github.com/hu55ain3laa/fastauth/issues
 Project-URL: Source, https://github.com/hu55ain3laa/fastauth
-Project-URL: Documentation, https://github.com/hu55ain3laa/fastauth/README.md
+Project-URL: Documentation, https://hu55ain3laa.github.io/fastauth/
 Keywords: fastapi,authentication,authorization,rbac,role-based,jwt,oauth2,sqlmodel,token,cli,database-initialization
 Classifier: Programming Language :: Python :: 3
 Classifier: Programming Language :: Python :: 3.9
@@ -42,12 +42,22 @@ Dynamic: requires-dist
 Dynamic: requires-python
 Dynamic: summary
 
-# FastAuth 
+<div align="center">
+  <img src="FastAuth.svg" alt="FastAuth Logo" width="350">
 
-A comprehensive authentication and authorization library for FastAPI applications with JWT-based authentication, role-based authorization, and SQLModel integration.
+  <p>A comprehensive authentication and authorization library for FastAPI applications<br>with JWT-based authentication, role-based authorization, and SQLModel integration.</p>
+</div>
 
-[![PyPI version](https://badge.fury.io/py/fastauth-iq.svg)](https://badge.fury.io/py/fastauth-iq)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<div align="center">
+  <a href="https://badge.fury.io/py/fastauth-iq"><img src="https://badge.fury.io/py/fastauth-iq.svg" alt="PyPI version"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+
+  <h3>📖 <a href="https://hu55ain3laa.github.io/fastauth/">Full Documentation Available Here</a></h3>
+</div>
+
+## Documentation
+
+This README provides a quick overview of FastAuth. For a more complete, interactive documentation with live examples and responsive design, visit our **[GitHub Pages Documentation](https://hu55ain3laa.github.io/fastauth/)**.
 
 ## Table of Contents
 
