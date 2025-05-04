@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="FastAuth.svg" alt="FastAuth Logo" width="350">
+  <img src="https://raw.githubusercontent.com/hu55ain3laa/fastauth/main/FastAuth.svg" alt="FastAuth Logo" width="350">
 
   <p>A comprehensive authentication and authorization library for FastAPI applications<br>with JWT-based authentication, role-based authorization, and SQLModel integration.</p>
 </div>
