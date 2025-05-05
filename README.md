@@ -5,7 +5,7 @@
 </div>
 
 <div align="center">
-  <a href="https://badge.fury.io/py/fastauth-iq"><img src="https://badge.fury.io/py/fastauth-iq.svg" alt="PyPI version"></a>
+  <a href="https://badge.fury.io/py/fastauth-iq"><img src="https://badge.fury.io/py/fastauth-iq.svg?v=0.3.3" alt="PyPI version"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
 
   <h3>📖 <a href="https://hu55ain3laa.github.io/fastauth/">Full Documentation Available Here</a></h3>
