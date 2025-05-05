@@ -6,7 +6,9 @@ import sys
 import re
 import getpass
 import argparse
-from typing import Optional
+import importlib.util
+from typing import Optional, Dict
+from pathlib import Path
 from sqlmodel import Session, select
 
 from fastauth.models.user import User, UserCreate
@@ -185,6 +187,88 @@ def find_secret_key_in_file(file_path):
     return None
 
 
+def load_environment_variables():
+    """Load environment variables from system and .env file if present.
+    
+    Returns:
+        Dict[str, str]: Dictionary of environment variables
+    """
+    env_vars = {}
+    
+    # Copy system environment variables
+    for key, value in os.environ.items():
+        env_vars[key] = value
+    
+    # Check for .env file
+    env_paths = [
+        os.path.join(os.getcwd(), '.env'),
+        os.path.join(os.path.dirname(os.getcwd()), '.env'),
+    ]
+    
+    for env_path in env_paths:
+        if os.path.exists(env_path):
+            print(f"Found .env file at {env_path}")
+            with open(env_path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith('#'):  # Skip comments and empty lines
+                        continue
+                    
+                    # Handle key=value format
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        key = key.strip()
+                        value = value.strip()
+                        
+                        # Remove quotes if present
+                        if (value.startswith("'") and value.endswith("'")) or \
+                           (value.startswith('"') and value.endswith('"')):
+                            value = value[1:-1]
+                            
+                        env_vars[key] = value
+    
+    return env_vars
+
+
+def import_module_variables(file_path):
+    """Dynamically import a Python module and extract its variables.
+    
+    Args:
+        file_path: Path to the Python file to import
+        
+    Returns:
+        dict: Dictionary of variables from the module
+    """
+    if not os.path.exists(file_path) or not file_path.endswith('.py'):
+        return {}
+    
+    try:
+        # Get the module name from the file path
+        module_name = os.path.basename(file_path).replace('.py', '')
+        
+        # Create a spec for the module
+        spec = importlib.util.spec_from_file_location(module_name, file_path)
+        if spec is None:
+            return {}
+            
+        # Create a module based on the spec
+        module = importlib.util.module_from_spec(spec)
+        
+        # Execute the module
+        spec.loader.exec_module(module)
+        
+        # Extract variables from the module
+        variables = {}
+        for name in dir(module):
+            if not name.startswith('_'):  # Skip private/internal variables
+                variables[name] = getattr(module, name)
+                
+        return variables
+    except Exception as e:
+        print(f"Error importing module {file_path}: {e}")
+        return {}
+
+
 def main():
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="FastAuth CLI utilities")
@@ -208,6 +292,15 @@ def main():
     db_url = args.db_url
     secret_key = args.secret_key
     
+    # Try to load from environment variables first
+    env_vars = load_environment_variables()
+    if not db_url and "DATABASE_URL" in env_vars:
+        db_url = env_vars["DATABASE_URL"]
+        print(f"Found database URL from environment variable")
+    if not secret_key and "SECRET_KEY" in env_vars:
+        secret_key = env_vars["SECRET_KEY"]
+        print(f"Found secret key from environment variable")
+    
     # Get app file from positional argument
     app_file = args.app_file
     
@@ -215,23 +308,94 @@ def main():
         print(f"Looking for settings in {app_file}...")
         app_path = os.path.abspath(app_file)
         
+        # Get the directory containing the app file
+        app_dir = os.path.dirname(app_path)
+        
+        # Check the app file itself first
         if not db_url:
             db_url = find_db_url_in_file(app_path)
             if db_url:
                 print(f"Found database URL: {db_url}")
-        
+                
         if not secret_key:
             secret_key = find_secret_key_in_file(app_path)
             if secret_key:
                 print(f"Found secret key in application file")
+                
+        # Try to import the app file to access variables like engine
+        if (not db_url or not secret_key) and app_path.endswith('.py'):
+            config_vars = import_module_variables(app_path)
+            
+            if not db_url and 'engine' in config_vars:
+                # Try to extract URL from engine
+                engine = config_vars['engine']
+                if hasattr(engine, 'url'):
+                    db_url = str(engine.url)
+                    print(f"Found database URL from imported engine")
+            
+            if not db_url and 'DATABASE_URL' in config_vars:
+                db_url = config_vars['DATABASE_URL']
+                print(f"Found database URL from imported module")
+                
+            if not secret_key and 'SECRET_KEY' in config_vars:
+                secret_key = config_vars['SECRET_KEY']
+                print(f"Found secret key from imported module")
+        
+        # If we still don't have what we need, look for common config files
+        if not db_url or not secret_key:
+            common_files = [
+                "config.py", 
+                "settings.py", 
+                "db.py", 
+                "database.py",
+                "models.py"
+            ]
+            
+            for file_name in common_files:
+                file_path = os.path.join(app_dir, file_name)
+                if os.path.exists(file_path):
+                    print(f"Checking {file_name} for settings...")
+                    
+                    if not db_url:
+                        db_url = find_db_url_in_file(file_path)
+                        if db_url:
+                            print(f"Found database URL in {file_name}")
+                    
+                    if not secret_key:
+                        secret_key = find_secret_key_in_file(file_path)
+                        if secret_key:
+                            print(f"Found secret key in {file_name}")
+                    
+                    # Try to import variables from this module too
+                    if not db_url or not secret_key:
+                        config_vars = import_module_variables(file_path)
+                        
+                        if not db_url and 'engine' in config_vars:
+                            engine = config_vars['engine']
+                            if hasattr(engine, 'url'):
+                                db_url = str(engine.url)
+                                print(f"Found database URL from imported engine in {file_name}")
+                        
+                        if not db_url and 'DATABASE_URL' in config_vars:
+                            db_url = config_vars['DATABASE_URL']
+                            print(f"Found database URL from {file_name}")
+                            
+                        if not secret_key and 'SECRET_KEY' in config_vars:
+                            secret_key = config_vars['SECRET_KEY']
+                            print(f"Found secret key from {file_name}")
+                            
+                    if db_url and secret_key:
+                        break
     
     # Validate required settings
     if not db_url:
         print("Error: Database URL is required. Please provide it with --db-url or specify an app file")
+        print("Tip: Make sure your database URL is defined in your app file, config.py, or as an environment variable (DATABASE_URL)")
         return 1
         
     if not secret_key:
         print("Error: Secret key is required. Please provide it with --secret-key or specify an app file")
+        print("Tip: Make sure your secret key is defined in your app file, config.py, or as an environment variable (SECRET_KEY)")
         return 1
     
     # Create the engine and FastAuth instance

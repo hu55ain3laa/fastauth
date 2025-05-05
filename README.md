@@ -238,8 +238,23 @@ The CLI tool will prompt for credentials if not provided, with defaults:
 
 #### Setting up your Application File for Auto-Detection
 
-When using the `fastauth example.py` syntax, FastAuth auto-detects database URL and secret key settings from your file. Use these formats for automatic detection:
+When using the `fastauth example.py` syntax, FastAuth auto-detects database URL and secret key settings from multiple sources (new in v0.3.3):
 
+**1. Environment Variables:**
+```bash
+# Set these environment variables before running FastAuth CLI
+export DATABASE_URL="sqlite:///./app.db"
+export SECRET_KEY="your-secret-key-here"
+```
+
+**2. .env Files:**
+Create a `.env` file in your project directory:
+```
+DATABASE_URL=sqlite:///./app.db
+SECRET_KEY=your-secret-key-here
+```
+
+**3. Python Module Variables:**
 ```python
 # Database URL - any of these formats will be detected
 DATABASE_URL = "sqlite:///./app.db"
@@ -252,7 +267,21 @@ SECRET_KEY = "your-secret-key-here"
 secret_key = "your-secret-key-here"
 ```
 
-These patterns are case-sensitive. If FastAuth cannot detect your settings, you can still provide them with the `--db-url` and `--secret-key` flags.
+**4. Imported Modules and Engine Objects:**
+```python
+# FastAuth will detect imported engine objects
+from database import engine  # Where database.py contains an engine definition
+
+# And imported configuration variables
+from config import DATABASE_URL, SECRET_KEY
+```
+
+FastAuth will search for these variables in:
+- The specified app file
+- Common configuration files (config.py, settings.py, db.py, etc.)
+- Imported modules
+
+If FastAuth cannot detect your settings, you can still provide them with the `--db-url` and `--secret-key` flags.
 
 ### Programmatic Initialization
 

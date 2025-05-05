@@ -234,7 +234,7 @@
                     d="M13 10V3L4 14h7v7l9-11h-7z"
                   />
                 </svg>
-                Latest: v0.3.0
+                Latest: v0.3.3
               </a>
               <a
                 href="https://opensource.org/licenses/MIT"
@@ -776,10 +776,10 @@ auth = FastAuth(
               class="text-xl font-semibold mt-8 mb-4 text-gray-700 flex items-center"
             >
               <span class="w-1.5 h-1.5 bg-[#05988A] rounded-full mr-2"></span>
-              CLI Initialization (new in v0.3.0)
+              CLI Initialization (enhanced in v0.3.3)
             </h3>
             <p class="mb-4">
-              Use the command-line interface for database setup:
+              Use the command-line interface for database setup with flexible configuration detection:
             </p>
             <div
               class="bg-gray-800 dark:bg-gray-950 text-white p-4 rounded-lg code-block border-l-4 border-[#05988A]"
@@ -788,8 +788,60 @@ auth = FastAuth(
 fastauth app.py
 
 # Or use explicit parameters
-fastauth --db-url="sqlite:///./app.db" --secret-key="your-secret-key"</code></pre>
+fastauth --db-url="sqlite:///./app.db" --secret-key="your-secret-key"
+
+# The CLI will automatically find settings from:
+# - .env files
+# - Environment variables
+# - Imported modules
+# - Database engine objects</code></pre>
             </div>
+            
+            <h4 class="text-lg font-semibold mt-6 mb-2 text-gray-700">Configuration Auto-Detection</h4>
+            <p class="mb-4">
+              FastAuth CLI can now detect database URLs and secret keys from multiple sources:
+            </p>
+            
+            <h5 class="font-semibold mt-4 mb-2 text-gray-700">1. Environment Variables</h5>
+            <div
+              class="bg-gray-800 dark:bg-gray-950 text-white p-4 rounded-lg code-block border-l-4 border-[#05988A]"
+            >
+              <pre><code class="language-bash"># Set these environment variables before running FastAuth CLI
+export DATABASE_URL="sqlite:///./app.db"
+export SECRET_KEY="your-secret-key-here"</code></pre>
+            </div>
+            
+            <h5 class="font-semibold mt-4 mb-2 text-gray-700">2. .env Files</h5>
+            <p class="mb-2">Create a <code class="bg-[#e6f7f5] dark:bg-[#064e45] text-[#05988A] dark:text-[#6ee6da] px-1 rounded">.env</code> file in your project directory:</p>
+            <div
+              class="bg-gray-800 dark:bg-gray-950 text-white p-4 rounded-lg code-block border-l-4 border-[#05988A]"
+            >
+              <pre><code class="language-env">DATABASE_URL=sqlite:///./app.db
+SECRET_KEY=your-secret-key-here</code></pre>
+            </div>
+            
+            <h5 class="font-semibold mt-4 mb-2 text-gray-700">3. Python Modules</h5>
+            <div
+              class="bg-gray-800 dark:bg-gray-950 text-white p-4 rounded-lg code-block border-l-4 border-[#05988A]"
+            >
+              <pre><code class="language-python"># FastAuth will detect these patterns in your Python files
+DATABASE_URL = "sqlite:///./app.db"
+secret_key = "your-secret-key-here"
+engine = create_engine("sqlite:///./app.db")</code></pre>
+            </div>
+            
+            <h5 class="font-semibold mt-4 mb-2 text-gray-700">4. Imported Modules</h5>
+            <div
+              class="bg-gray-800 dark:bg-gray-950 text-white p-4 rounded-lg code-block border-l-4 border-[#05988A]"
+            >
+              <pre><code class="language-python"># FastAuth will detect imported engines and variables
+from database import engine  # Where database.py contains an engine definition
+from config import DATABASE_URL, SECRET_KEY</code></pre>
+            </div>
+            
+            <p class="mt-4 mb-4">
+              The CLI will search common configuration files in your project, including <code class="bg-[#e6f7f5] dark:bg-[#064e45] text-[#05988A] dark:text-[#6ee6da] px-1 rounded">config.py</code>, <code class="bg-[#e6f7f5] dark:bg-[#064e45] text-[#05988A] dark:text-[#6ee6da] px-1 rounded">settings.py</code>, <code class="bg-[#e6f7f5] dark:bg-[#064e45] text-[#05988A] dark:text-[#6ee6da] px-1 rounded">db.py</code>, and more.
+            </p>
 
             <h3
               class="text-xl font-semibold mt-8 mb-4 text-gray-700 flex items-center"
