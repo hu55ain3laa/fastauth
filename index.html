@@ -1145,14 +1145,30 @@ auth = FastAuth(
             >
               <pre><code class="language-bash">fastauth/
 ├── __init__.py           # Package initialization
-├── auth.py               # Authentication core functionality
 ├── cli.py                # Command-line interface utilities
-├── dependencies.py       # FastAPI dependency providers
-├── models.py             # Database models with SQLModel
-├── roles.py              # Role-based authorization
-├── router.py             # API endpoints
-├── schemas.py            # Pydantic schemas for API
-└── utils.py              # Utility functions</code></pre>
+├── core/                 # Core functionality
+│   ├── __init__.py       # Core initialization
+│   └── auth.py           # Authentication core functionality
+├── dependencies/         # FastAPI dependency providers
+│   ├── __init__.py       # Dependencies initialization
+│   ├── auth.py           # Authentication dependencies
+│   └── roles.py          # Role-based authorization dependencies
+├── models/               # Database models
+│   ├── __init__.py       # Models initialization
+│   ├── user.py           # User model
+│   ├── role.py           # Role model
+│   └── tokens.py         # Token model
+├── routers/              # API endpoints
+│   ├── __init__.py       # Routers initialization
+│   ├── auth.py           # Authentication endpoints
+│   └── roles.py          # Role management endpoints
+├── security/             # Security utilities
+│   ├── __init__.py       # Security initialization
+│   ├── password.py       # Password handling utilities
+│   └── tokens.py         # Token handling utilities
+└── utils/                # Utility functions
+    ├── __init__.py       # Utils initialization
+    └── session.py        # Session management utilities</code></pre>
             </div>
             <p class="mt-4 mb-2">
               The library is designed with a clean, modular architecture making
