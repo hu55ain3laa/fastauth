@@ -1,5 +1,5 @@
 from typing import Optional, Callable, Type, Dict, Any, Union, List
-from fastapi import Depends, HTTPException, status, Request, Response, APIRouter
+from fastapi import Depends, HTTPException, status, Request, Response, APIRouter, FastAPI
 from fastapi.security import OAuth2PasswordBearer, OAuth2, OAuth2PasswordRequestForm
 from sqlmodel import SQLModel, Session, select
 from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
@@ -16,6 +16,7 @@ from fastauth.models.user import User, UserRole
 from fastauth.models.role import Role, RoleCreate
 from fastauth.models.tokens import Token, TokenData
 from fastauth.cli import create_superadmin, initialize_roles
+from fastauth.exceptions import FastAuthException, setup_exception_handlers
 
 
 class OAuth2PasswordBearerWithCookie(OAuth2):
@@ -236,6 +237,16 @@ class FastAuth:
             APIRouter: Router with role endpoints
         """
         return self.role_router.router
+        
+    def setup_exception_handlers(self, app: FastAPI):
+        """Set up exception handlers for a FastAPI application.
+        
+        This configures standardized error responses for all FastAuth exceptions.
+        
+        Args:
+            app: FastAPI application instance to set up exception handlers for
+        """
+        setup_exception_handlers(app)
         
     def require_roles(self, required_roles):
         """Get a FastAPI dependency that requires specific roles.

@@ -15,8 +15,21 @@ from fastauth.models.user import (
 from fastauth.models.tokens import Token, TokenData
 from fastauth.models.role import Role, RoleRead, RoleCreate, RoleUpdate
 from fastauth.dependencies.roles import RoleDependencies, RoleManager
+from fastauth.exceptions import (
+    FastAuthException,
+    CredentialsException,
+    TokenException,
+    RefreshTokenException,
+    InactiveUserException,
+    UserNotFoundException,
+    UserExistsException,
+    RoleNotFoundException,
+    RoleExistsException,
+    PermissionDeniedException,
+    setup_exception_handlers
+)
 
-__version__ = "0.2.2"
+__version__ = "0.3.4"
 
 __all__ = [
     'FastAuth',
@@ -35,5 +48,17 @@ __all__ = [
     'RoleCreate',
     'RoleUpdate',
     'RoleDependencies',
-    'RoleManager'
+    'RoleManager',
+    # Exception classes
+    'FastAuthException',
+    'CredentialsException',
+    'TokenException',
+    'RefreshTokenException',
+    'InactiveUserException',
+    'UserNotFoundException',
+    'UserExistsException',
+    'RoleNotFoundException',
+    'RoleExistsException',
+    'PermissionDeniedException',
+    'setup_exception_handlers'
 ]

@@ -1,9 +1,10 @@
-from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, Depends, status
 
 from fastauth.models.role import Role, RoleCreate, RoleRead, RoleUpdate
 from fastauth.models.user import User
 from fastauth.dependencies.roles import RoleDependencies, RoleManager
+from fastauth.exceptions import RoleNotFoundException, UserNotFoundException, PermissionDeniedException
 
 
 class RoleRouter:
@@ -92,10 +93,7 @@ class RoleRouter:
             role = role_manager.get_role(role_id=role_id)
             
             if not role:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Role with ID {role_id} not found"
-                )
+                raise RoleNotFoundException(f"Role with ID {role_id} not found")
                 
             return role
             
@@ -125,10 +123,7 @@ class RoleRouter:
             role = role_manager.update_role(role_id, role_data)
             
             if not role:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Role with ID {role_id} not found"
-                )
+                raise RoleNotFoundException(f"Role with ID {role_id} not found")
                 
             return role
             
@@ -153,10 +148,7 @@ class RoleRouter:
             deleted = role_manager.delete_role(role_id)
             
             if not deleted:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Role with ID {role_id} not found"
-                )
+                raise RoleNotFoundException(f"Role with ID {role_id} not found")
                 
         @self.router.post(
             "/assign/{user_id}/{role_id}",

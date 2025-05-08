@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: fastauth_iq
-Version: 0.3.3
+Version: 0.3.4
 Summary: A comprehensive authentication and authorization library for FastAPI with JWT, cookie support, role-based access control, and automatic database initialization
 Home-page: https://github.com/hu55ain3laa/fastauth
 Author: Hussein Ghadhban
@@ -49,7 +49,7 @@ Dynamic: summary
 </div>
 
 <div align="center">
-  <a href="https://badge.fury.io/py/fastauth-iq"><img src="https://badge.fury.io/py/fastauth-iq.svg" alt="PyPI version"></a>
+  <a href="https://badge.fury.io/py/fastauth-iq"><img src="https://badge.fury.io/py/fastauth-iq.svg?v=0.3.4" alt="PyPI version"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
 
   <h3>📖 <a href="https://hu55ain3laa.github.io/fastauth/">Full Documentation Available Here</a></h3>
@@ -78,6 +78,9 @@ This README provides a quick overview of FastAuth. For a more complete, interact
 - [API Reference](#api-reference)
   - [Authentication Endpoints](#authentication-endpoints)
   - [Role Management Endpoints](#role-management-endpoints)
+- [Error Handling](#error-handling)
+  - [Custom Exceptions](#custom-exceptions)
+  - [Standardized Error Responses](#standardized-error-responses)
 - [Advanced Usage](#advanced-usage)
   - [Custom User Models](#custom-user-models)
   - [Custom Authentication Logic](#custom-authentication-logic)
@@ -94,6 +97,7 @@ This README provides a quick overview of FastAuth. For a more complete, interact
 - **SQLModel integration** for easy database operations
 - **CLI utilities** for database initialization and management (new in v0.3.0)
 - **Ready-to-use authentication routes** with minimal setup
+- **Comprehensive error handling** with standardized error responses (new in v0.3.4)
 - **Password hashing** with bcrypt
 - **Modular architecture** for better code organization and extensibility
 
@@ -186,6 +190,9 @@ app.include_router(auth_router, tags=["authentication"])
 # Add role management routes (new in v0.2.2)
 role_router = auth.get_role_router()
 app.include_router(role_router, tags=["roles"])
+
+# Set up standardized error handling (new in v0.3.4)
+auth.setup_exception_handlers(app)
 ```
 
 ### 3. Protect Your Routes
@@ -413,25 +420,72 @@ This adds these role management endpoints:
 
 ### Authentication Endpoints
 
-The `auth_router` adds these endpoints:
+FastAuth provides the following authentication endpoints:
 
-- **POST /token** - Get access and refresh tokens with username/password
-- **POST /token/refresh** - Get a new access token using a refresh token
-- **POST /users** - Register a new user
-- **GET /users/me** - Get the current authenticated user's information
+- `POST /token` - Login and get access + refresh tokens
+- `POST /token/refresh` - Use refresh token to get a new access token
+- `POST /users` - Register a new user
+- `GET /users/me` - Get current user information
 
 ### Role Management Endpoints
 
-The `role_router` adds these endpoints:
+FastAuth provides these role management endpoints (all under `/roles` by default):
 
-- **GET /roles** - List all roles
-- **POST /roles** - Create a new role (admin only)
-- **GET /roles/{role_id}** - Get a role by ID
-- **PUT /roles/{role_id}** - Update a role (admin only)
-- **DELETE /roles/{role_id}** - Delete a role (admin only)
-- **POST /roles/assign/{user_id}/{role_id}** - Assign a role to a user (admin only)
-- **DELETE /roles/assign/{user_id}/{role_id}** - Remove a role from a user (admin only)
-- **GET /roles/user/{user_id}** - Get all roles for a user
+- `POST /roles/` - Create a new role (admin only)
+- `GET /roles/` - Get all roles (authenticated users)
+- `GET /roles/{role_id}` - Get a specific role (authenticated users)
+- `PUT /roles/{role_id}` - Update a role (admin only)
+- `DELETE /roles/{role_id}` - Delete a role (admin only)
+- `POST /roles/assign/{user_id}/{role_id}` - Assign role to user (admin only)
+- `DELETE /roles/assign/{user_id}/{role_id}` - Remove role from user (admin only)
+
+## Error Handling
+
+FastAuth provides a comprehensive error handling system that delivers consistent, informative error responses across all endpoints (new in v0.3.4).
+
+### Custom Exceptions
+
+The library includes specialized exception classes for different error scenarios:
+
+```python
+from fastauth import (
+    CredentialsException,    # Authentication failures
+    TokenException,          # Token verification issues
+    RefreshTokenException,   # Refresh token problems
+    InactiveUserException,   # User account is disabled
+    UserNotFoundException,   # User doesn't exist
+    UserExistsException,     # Username already taken
+    RoleNotFoundException,    # Role doesn't exist
+    RoleExistsException,     # Role already exists
+    PermissionDeniedException # Insufficient permissions
+)
+```
+
+### Standardized Error Responses
+
+All FastAuth exceptions return a consistent JSON structure:
+
+```json
+{
+  "error": {
+    "code": "FASTAUTH_ERROR_CODE",
+    "message": "Human-readable error description",
+    "status_code": 401  // HTTP status code
+  }
+}
+```
+
+Enabling error handling is simple:
+
+```python
+app = FastAPI()
+auth = FastAuth(...)
+
+# Register exception handlers with your FastAPI app
+auth.setup_exception_handlers(app)
+```
+
+This makes debugging easier and allows clients to handle errors in a consistent way. Each exception type has its own specific error code, making it straightforward to identify and respond to different error scenarios.
 
 ## Advanced Usage
 

@@ -8,7 +8,11 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlmodel import create_engine, SQLModel, Session
 
 # Import directly from fastauth package
-from fastauth import FastAuth, User, Role, RoleCreate, UserRole
+from fastauth import (
+    FastAuth, User, Role, RoleCreate, UserRole,
+    # New in v0.3.4: Custom exception classes
+    CredentialsException, TokenException, UserNotFoundException, PermissionDeniedException
+)
 
 # The old direct import from fastauth.py still works but will issue a deprecation warning
 # from fastauth import FastAuth  # from fastauth.py
@@ -85,6 +89,9 @@ role_router = auth.get_role_router()
 app.include_router(auth_router, tags=["authentication"])
 app.include_router(role_router, tags=["roles"])
 
+# Set up the standardized error handlers (new in v0.3.4)
+auth.setup_exception_handlers(app)
+
 # Protected route example - requires authentication only
 @app.get("/protected", tags=["protected"])
 async def protected_route(current_user = Depends(auth.get_current_active_user_dependency())):
@@ -148,6 +155,35 @@ async def root():
     This is a public route that doesn't require authentication.
     """
     return {"message": "Welcome to the FastAuth example app. Try /docs to see the API."}
+
+# Example routes demonstrating the new error handling (v0.3.4)
+@app.get("/error/credentials", tags=["error-examples"])
+async def credentials_error():
+    """
+    This route demonstrates how to use the CredentialsException.
+    """
+    raise CredentialsException("Example of credentials error")
+
+@app.get("/error/token", tags=["error-examples"])
+async def token_error():
+    """
+    This route demonstrates how to use the TokenException.
+    """
+    raise TokenException("Example of token error")
+
+@app.get("/error/user-not-found", tags=["error-examples"])
+async def user_not_found_error():
+    """
+    This route demonstrates how to use the UserNotFoundException.
+    """
+    raise UserNotFoundException("Example of user not found error")
+
+@app.get("/error/permission", tags=["error-examples"])
+async def permission_error():
+    """
+    This route demonstrates how to use the PermissionDeniedException.
+    """
+    raise PermissionDeniedException("Example of permission denied error")
 
 # Utility endpoint to create roles and assign them to users
 @app.post("/setup-roles", tags=["setup"])

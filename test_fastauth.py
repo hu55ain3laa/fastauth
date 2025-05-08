@@ -29,6 +29,13 @@ try:
     from fastauth.dependencies.roles import RoleDependencies
     from fastauth.routers.auth import AuthRouter
     from fastauth.routers.roles import RoleRouter
+    # Import new exception classes (added in v0.3.4)
+    from fastauth import (
+        FastAuthException, CredentialsException, TokenException, 
+        RefreshTokenException, InactiveUserException, UserNotFoundException,
+        UserExistsException, RoleNotFoundException, RoleExistsException,
+        PermissionDeniedException, setup_exception_handlers
+    )
     logger.info("✅ Successfully imported FastAuth and all components")
 except Exception as e:
     logger.error(f"❌ Error importing FastAuth: {e}")
@@ -80,6 +87,9 @@ class TestFastAuth(unittest.TestCase):
         cls.app.include_router(cls.auth_router)
         cls.app.include_router(cls.role_router)
         
+        # Set up the standardized error handlers (new in v0.3.4)
+        cls.auth.setup_exception_handlers(cls.app)
+        
         # Add test routes with different protection levels
         @cls.app.get("/unprotected")
         def unprotected():
@@ -100,6 +110,39 @@ class TestFastAuth(unittest.TestCase):
         @cls.app.get("/all-roles")
         def all_roles(user = Depends(cls.auth.require_all_roles(["premium", "verified"]))):
             return {"message": "This requires premium AND verified roles", "user": user.username}
+        
+        # Add test routes for error handling (new in v0.3.4)
+        @cls.app.get("/error/credentials")
+        def credentials_error():
+            raise CredentialsException("Test credentials error")
+        
+        @cls.app.get("/error/token")
+        def token_error():
+            raise TokenException("Test token error")
+            
+        @cls.app.get("/error/refresh-token")
+        def refresh_token_error():
+            raise RefreshTokenException("Test refresh token error")
+            
+        @cls.app.get("/error/inactive-user")
+        def inactive_user_error():
+            raise InactiveUserException("Test inactive user error")
+            
+        @cls.app.get("/error/user-not-found")
+        def user_not_found_error():
+            raise UserNotFoundException("Test user not found error")
+            
+        @cls.app.get("/error/user-exists")
+        def user_exists_error():
+            raise UserExistsException("Test user exists error")
+            
+        @cls.app.get("/error/role-not-found")
+        def role_not_found_error():
+            raise RoleNotFoundException("Test role not found error")
+            
+        @cls.app.get("/error/permission-denied")
+        def permission_denied_error():
+            raise PermissionDeniedException("Test permission denied error")
             
         cls.client = TestClient(cls.app)
         logger.info("✅ Test environment setup complete")
@@ -466,10 +509,87 @@ class TestFastAuth(unittest.TestCase):
             "password": "another_password"
         }
         response = self.client.post("/users", json=duplicate_user)
-        self.assertEqual(response.status_code, 400)  # Bad request - duplicate username
+        self.assertEqual(response.status_code, 409)  # Conflict - duplicate username (changed from 400 in v0.3.4)
         
         logger.info("✅ User registration tests passed")
+    
+    def test_10_error_handling(self):
+        """Test the error handling system (added in v0.3.4)"""
+        # Test CredentialsException
+        response = self.client.get("/error/credentials")
+        self.assertEqual(response.status_code, 401)
+        error_data = response.json()
+        self.assertIn("error", error_data)
+        self.assertEqual(error_data["error"]["code"], "FASTAUTH_INVALID_CREDENTIALS")
         
+        # Test TokenException
+        response = self.client.get("/error/token")
+        self.assertEqual(response.status_code, 401)
+        error_data = response.json()
+        self.assertIn("error", error_data)
+        self.assertEqual(error_data["error"]["code"], "FASTAUTH_INVALID_TOKEN")
+        
+        # Test RefreshTokenException
+        response = self.client.get("/error/refresh-token")
+        self.assertEqual(response.status_code, 401)
+        error_data = response.json()
+        self.assertIn("error", error_data)
+        self.assertEqual(error_data["error"]["code"], "FASTAUTH_INVALID_REFRESH_TOKEN")
+        
+        # Test InactiveUserException
+        response = self.client.get("/error/inactive-user")
+        self.assertEqual(response.status_code, 403)
+        error_data = response.json()
+        self.assertIn("error", error_data)
+        self.assertEqual(error_data["error"]["code"], "FASTAUTH_INACTIVE_USER")
+        
+        # Test UserNotFoundException
+        response = self.client.get("/error/user-not-found")
+        self.assertEqual(response.status_code, 404)
+        error_data = response.json()
+        self.assertIn("error", error_data)
+        self.assertEqual(error_data["error"]["code"], "FASTAUTH_USER_NOT_FOUND")
+        
+        # Test UserExistsException
+        response = self.client.get("/error/user-exists")
+        self.assertEqual(response.status_code, 409)
+        error_data = response.json()
+        self.assertIn("error", error_data)
+        self.assertEqual(error_data["error"]["code"], "FASTAUTH_USER_EXISTS")
+        
+        # Test RoleNotFoundException
+        response = self.client.get("/error/role-not-found")
+        self.assertEqual(response.status_code, 404)
+        error_data = response.json()
+        self.assertIn("error", error_data)
+        self.assertEqual(error_data["error"]["code"], "FASTAUTH_ROLE_NOT_FOUND")
+        
+        # Test PermissionDeniedException
+        response = self.client.get("/error/permission-denied")
+        self.assertEqual(response.status_code, 403)
+        error_data = response.json()
+        self.assertIn("error", error_data)
+        self.assertEqual(error_data["error"]["code"], "FASTAUTH_PERMISSION_DENIED")
+        
+        # Verify each error response has the required structure
+        for endpoint in ["/error/credentials", "/error/token", "/error/refresh-token", 
+                          "/error/inactive-user", "/error/user-not-found", "/error/user-exists", 
+                          "/error/role-not-found", "/error/permission-denied"]:
+            response = self.client.get(endpoint)
+            error_data = response.json()
+            
+            # Check that the error response has the standardized structure
+            self.assertIn("error", error_data)
+            self.assertIn("code", error_data["error"])
+            self.assertIn("message", error_data["error"])
+            self.assertIn("status_code", error_data["error"])
+            
+            # Ensure status code in the response matches the one in the error data
+            self.assertEqual(response.status_code, error_data["error"]["status_code"])
+            
+        logger.info("✅ Error handling system tests passed")
+
+
 if __name__ == "__main__":
     print("Starting FastAuth Library Test Suite...")
     unittest.main(verbosity=2)

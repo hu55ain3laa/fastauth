@@ -1,11 +1,15 @@
-from typing import Optional, Callable
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from typing import Optional, Callable, Dict, Any
+from fastapi import APIRouter, Depends, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from jwt.exceptions import InvalidTokenError
 
 from fastauth.models.user import User, UserCreate, UserRead, UserLogin
 from fastauth.models.tokens import Token
+from fastauth.exceptions import (
+    CredentialsException, TokenException, RefreshTokenException,
+    UserExistsException, UserNotFoundException
+)
 
 
 class AuthRouter:
@@ -44,11 +48,7 @@ class AuthRouter:
         ):
             user = self.auth.authenticate_user(form_data.username, form_data.password)
             if not user:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Incorrect username or password",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
+                raise CredentialsException("Incorrect username or password")
             
             # Create access token
             access_token = self.auth.token_manager.create_access_token(data={"sub": user.username})
@@ -73,18 +73,12 @@ class AuthRouter:
         async def refresh_access_token(response: Response, body: dict):
             # Get refresh token from JSON body
             if not body or "refresh_token" not in body:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="refresh_token is required in request body"
-                )
+                raise RefreshTokenException("refresh_token is required in request body")
                 
             refresh_token = body["refresh_token"]
             
             if not refresh_token:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="refresh_token cannot be empty"
-                )
+                raise RefreshTokenException("refresh_token cannot be empty")
             
             try:
                 # Verify refresh token
@@ -94,10 +88,7 @@ class AuthRouter:
                 # Validate user exists
                 user = self.auth.get_user(self.auth.session, username=username)
                 if user is None:
-                    raise HTTPException(
-                        status_code=status.HTTP_401_UNAUTHORIZED,
-                        detail="Invalid user"
-                    )
+                    raise UserNotFoundException(f"User {username} not found")
                     
                 # Create a new access token
                 access_token = self.auth.token_manager.create_access_token({"sub": username})
@@ -114,13 +105,10 @@ class AuthRouter:
                 
                 return {"access_token": access_token, "token_type": "bearer"}
                 
-            except HTTPException as e:
+            except (CredentialsException, TokenException, UserNotFoundException) as e:
                 raise e
             except Exception as e:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail=f"Invalid token: {str(e)}"
-                )
+                raise TokenException(f"Invalid token: {str(e)}")
         
         # User registration endpoint
         @router.post("/users", status_code=status.HTTP_201_CREATED)
@@ -131,7 +119,7 @@ class AuthRouter:
             )).first()
             
             if db_user:
-                raise HTTPException(status_code=400, detail="Username already registered")
+                raise UserExistsException(f"Username '{user.username}' already registered")
             
             # Create new user
             new_user = self.auth.user_model(

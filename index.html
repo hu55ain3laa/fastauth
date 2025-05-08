@@ -443,6 +443,23 @@ def protected_route(
                 >API Reference</a
               >
               <a
+                href="#error-handling"
+                class="block py-1 px-3 hover:bg-[#e6f7f5] hover:text-[#05988A] rounded transition"
+                >Error Handling</a
+              >
+              <div class="pl-4 space-y-1 mt-1">
+                <a
+                  href="#custom-exceptions"
+                  class="block py-1 px-3 hover:bg-[#e6f7f5] hover:text-[#05988A] rounded transition text-sm"
+                  >Custom Exceptions</a
+                >
+                <a
+                  href="#standardized-error-responses"
+                  class="block py-1 px-3 hover:bg-[#e6f7f5] hover:text-[#05988A] rounded transition text-sm"
+                  >Standardized Error Responses</a
+                >
+              </div>
+              <a
                 href="#advanced-usage"
                 class="block py-1 px-3 hover:bg-[#e6f7f5] hover:text-[#05988A] rounded transition"
                 >Advanced Usage</a
@@ -1133,6 +1150,83 @@ auth = FastAuth(
             </div>
           </section>
 
+          <section id="error-handling" class="mb-12">
+            <h2
+              class="text-3xl font-bold mb-2 text-[#05988A] flex items-center"
+            >
+              Error Handling
+            </h2>
+            <div class="section-divider mb-6"></div>
+
+            <p class="mb-4">
+              FastAuth provides a comprehensive error handling system that delivers consistent, 
+              informative error responses across all endpoints (new in v0.3.4).
+            </p>
+
+            <div id="custom-exceptions" class="mb-8">
+              <h3
+                class="text-xl font-semibold mt-8 mb-4 text-gray-700 flex items-center"
+              >
+                <span class="w-1.5 h-1.5 bg-[#05988A] rounded-full mr-2"></span
+                >Custom Exceptions
+              </h3>
+              <p class="mb-4">
+                The library includes specialized exception classes for different error scenarios:
+              </p>
+              <div class="code-block">
+                <pre class="language-python"><code>from fastauth import (
+    CredentialsException,    # Authentication failures
+    TokenException,          # Token verification issues
+    RefreshTokenException,   # Refresh token problems
+    InactiveUserException,   # User account is disabled
+    UserNotFoundException,   # User doesn't exist
+    UserExistsException,     # Username already taken
+    RoleNotFoundException,    # Role doesn't exist
+    RoleExistsException,     # Role already exists
+    PermissionDeniedException # Insufficient permissions
+)</code></pre>
+              </div>
+            </div>
+
+            <div id="standardized-error-responses" class="mb-8">
+              <h3
+                class="text-xl font-semibold mt-8 mb-4 text-gray-700 flex items-center"
+              >
+                <span class="w-1.5 h-1.5 bg-[#05988A] rounded-full mr-2"></span
+                >Standardized Error Responses
+              </h3>
+              <p class="mb-4">
+                All FastAuth exceptions return a consistent JSON structure:
+              </p>
+              <div class="code-block">
+                <pre class="language-json"><code>{
+  "error": {
+    "code": "FASTAUTH_ERROR_CODE",
+    "message": "Human-readable error description",
+    "status_code": 401  // HTTP status code
+  }
+}</code></pre>
+              </div>
+
+              <p class="mt-4 mb-4">
+                Enabling error handling is simple:
+              </p>
+              <div class="code-block">
+                <pre class="language-python"><code>app = FastAPI()
+auth = FastAuth(...)
+
+# Register exception handlers with your FastAPI app
+auth.setup_exception_handlers(app)</code></pre>
+              </div>
+
+              <p class="mt-4 mb-4">
+                This makes debugging easier and allows clients to handle errors in a consistent way. 
+                Each exception type has its own specific error code, making it straightforward to identify 
+                and respond to different error scenarios.
+              </p>
+            </div>
+          </section>
+
           <section id="project-structure" class="mb-12">
             <h2
               class="text-3xl font-bold mb-2 text-[#05988A] flex items-center"
@@ -1153,6 +1247,7 @@ auth = FastAuth(
 │   ├── __init__.py       # Dependencies initialization
 │   ├── auth.py           # Authentication dependencies
 │   └── roles.py          # Role-based authorization dependencies
+├── exceptions.py         # Custom exceptions and error handling
 ├── models/               # Database models
 │   ├── __init__.py       # Models initialization
 │   ├── user.py           # User model

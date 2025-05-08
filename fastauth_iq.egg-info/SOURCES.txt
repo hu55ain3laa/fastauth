@@ -3,6 +3,7 @@ User.py
 setup.py
 fastauth/__init__.py
 fastauth/cli.py
+fastauth/exceptions.py
 fastauth/core/__init__.py
 fastauth/core/auth.py
 fastauth/dependencies/__init__.py
