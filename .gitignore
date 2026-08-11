@@ -48,3 +48,6 @@ htmlcov/
 # Local development
 .python-version
 RELEASE_NOTES.md
+
+# Local maintainer playbook, not for GitHub
+/CLAUDE.md
