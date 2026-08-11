@@ -51,3 +51,6 @@ RELEASE_NOTES.md
 
 # Local maintainer playbook, not for GitHub
 /CLAUDE.md
+
+# uv lockfile: this is a library, so consumers resolve their own versions
+uv.lock

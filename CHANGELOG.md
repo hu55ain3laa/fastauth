@@ -33,6 +33,12 @@ release can break your code. See
 - Coverage measurement with a regression threshold. Currently 81% overall, with
   the security-critical paths higher: `core/auth.py` 94%, routers 96%,
   `security/` 97-100%.
+- `tests/test_docs_match_api.py` asserts the documented API matches the API
+  that exists: the routes the app mounts, the endpoint reference, `AGENTS.md`,
+  and the route count the landing page advertises. Documentation drift is now
+  a test failure rather than something noticed later by a user.
+- A weekly external link check for the documentation, advisory only so a
+  third-party site being briefly unreachable never fails a build.
 
 ### Fixed
 

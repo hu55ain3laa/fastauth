@@ -88,3 +88,33 @@ jobs:
       # to keep the signal worth reading.
       - name: Audit npm dependencies
         run: pnpm audit --audit-level high
+
+  # External links rot silently: jwt.io, Alembic and the FastAPI docs are all
+  # linked from the guides. Weekly and advisory, since a third-party site being
+  # briefly down should never fail a build.
+  links:
+    name: External links
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check external links in the docs
+        run: |
+          grep -rhoE 'https?://[a-zA-Z0-9./_#?=-]+' web/app README.md \
+            | sed 's/[.,)]*$//' \
+            | grep -vE 'localhost|127\.0\.0\.1|example\.com|yourapp\.com|your-domain' \
+            | sort -u > /tmp/urls.txt
+          echo "Checking $(wc -l < /tmp/urls.txt) distinct URLs"
+          fails=0
+          while read -r url; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" -L --max-time 20 \
+                     -A "fastauth-link-check" "$url" 2>/dev/null || echo 000)
+            case "$code" in
+              2*|3*) ;;
+              403|405|429) echo "  skip $code $url  (bot protection)" ;;
+              *) echo "::warning::Dead link $code $url"; fails=$((fails+1)) ;;
+            esac
+          done < /tmp/urls.txt
+          echo "$fails link(s) need attention"
