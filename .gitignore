@@ -13,19 +13,26 @@ build/
 
 # Virtual environments
 venv/
+.venv/
 env/
 ENV/
+
+# Environment and secrets
 .env
+.fastauth-secret
 
 # Database files
 *.db
 *.sqlite
 *.sqlite3
 
-# Testing
+# Testing / tooling caches
 .coverage
 htmlcov/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
 
 # IDE files
 .idea/
@@ -35,14 +42,9 @@ htmlcov/
 # Logs
 *.log
 
+# OS files
+.DS_Store
+
 # Local development
-.DS_Store
 .python-version
-
-# Project specific
-example.db
-
-.DS_Store
-
 RELEASE_NOTES.md
-.fastauth-secret
