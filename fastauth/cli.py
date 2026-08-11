@@ -155,27 +155,43 @@ def _find_in_file(file_path: str, patterns) -> Optional[str]:
         content = file.read()
 
     for pattern in patterns:
-        match = re.search(pattern, content)
+        # MULTILINE so the end-of-value anchors match per line, not per file.
+        match = re.search(pattern, content, re.MULTILINE)
         if match:
             return match.group(1)
 
     return None
 
 
+# Each pattern requires the string literal to be the *complete* value: either
+# the end of the assignment, or the whole first argument. Without that, a
+# concatenated expression like
+#     create_engine("sqlite:///" + name)
+# matches and yields "sqlite:///" — a URL that looks plausible and points
+# nowhere. Refusing to match lets the module-import fallback evaluate the
+# expression properly instead.
+_END_OF_VALUE = r"\s*(?:#.*)?$"
+
 DB_URL_PATTERNS = [
-    r"DATABASE_URL\s*=\s*['\"]([^'\"]+)['\"]",
-    r"db_url\s*=\s*['\"]([^'\"]+)['\"]",
-    r"engine\s*=\s*create_engine\(['\"]([^'\"]+)['\"]",
+    r"DATABASE_URL\s*=\s*['\"]([^'\"]+)['\"]" + _END_OF_VALUE,
+    r"db_url\s*=\s*['\"]([^'\"]+)['\"]" + _END_OF_VALUE,
+    r"engine\s*=\s*create_engine\(\s*['\"]([^'\"]+)['\"]\s*[,)]",
 ]
 
 SECRET_KEY_PATTERNS = [
-    r"SECRET_KEY\s*=\s*['\"]([^'\"]+)['\"]",
-    r"secret_key\s*=\s*['\"]([^'\"]+)['\"]",
+    r"SECRET_KEY\s*=\s*['\"]([^'\"]+)['\"]" + _END_OF_VALUE,
+    r"secret_key\s*=\s*['\"]([^'\"]+)['\"]" + _END_OF_VALUE,
 ]
 
 
 def load_environment_variables():
     """Load environment variables from the system and a .env file if present.
+
+    The real environment always wins. A .env file only fills in what is not
+    already set, matching how dotenv tooling behaves everywhere else — and,
+    more importantly, so that a stale .env left in a deployed image cannot
+    silently override the SECRET_KEY the environment provides. Signing tokens
+    with the wrong key fails in ways that are very hard to trace back here.
 
     Returns:
         dict: Dictionary of environment variables
@@ -197,8 +213,10 @@ def load_environment_variables():
                 if not line or line.startswith("#") or "=" not in line:
                     continue
                 key, value = line.split("=", 1)
-                value = value.strip().strip("'\"")
-                env_vars[key.strip()] = value
+                key = key.strip()
+                if key in os.environ:
+                    continue  # the deployed environment takes precedence
+                env_vars[key] = value.strip().strip("'\"")
 
     return env_vars
 

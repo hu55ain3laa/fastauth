@@ -4,6 +4,10 @@ on:
   push:
     tags: ["v*"]
 
+# Read by default; the publish and release jobs elevate only what they need.
+permissions:
+  contents: read
+
 jobs:
   # The full matrix, not just one interpreter. A tag can point at a commit that
   # never went through pull-request CI, so this is the only guarantee that what

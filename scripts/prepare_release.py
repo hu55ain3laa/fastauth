@@ -32,7 +32,7 @@ def current_version() -> str:
     text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     match = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
     if not match:
-        sys.exit("Could not read version from pyproject.toml")
+        raise SystemExit("Could not read version from pyproject.toml")
     return match.group(1)
 
 
@@ -57,7 +57,7 @@ def infer_bump(changelog: str) -> tuple[str, str]:
         return "minor", f"new or changed behaviour ({why}) with nothing removed"
     if headings & {"Fixed", "Security"}:
         return "patch", "fixes only"
-    sys.exit(
+    raise SystemExit(
         "Cannot infer the bump: the Unreleased section has no recognised\n"
         "### heading. Use Added / Changed / Deprecated / Removed / Fixed /\n"
         "Security, or pass the bump explicitly."
@@ -69,7 +69,7 @@ def next_version(current: str, spec: str) -> str:
         return spec
     parts = current.split(".")
     if len(parts) != 3 or not all(p.isdigit() for p in parts):
-        sys.exit(f"Cannot bump non-numeric version {current!r}; pass an explicit version")
+        raise SystemExit(f"Cannot bump non-numeric version {current!r}; pass an explicit version")
     major, minor, patch = (int(p) for p in parts)
 
     # Pre-1.0, a breaking change bumps the minor rather than declaring 1.0.
@@ -86,7 +86,7 @@ def next_version(current: str, spec: str) -> str:
         return f"{major}.{minor + 1}.0"
     if spec == "patch":
         return f"{major}.{minor}.{patch + 1}"
-    sys.exit(f"Unknown bump {spec!r}: use major, minor, patch, auto, or an explicit X.Y.Z")
+    raise SystemExit(f"Unknown bump {spec!r}: use major, minor, patch, auto, or an explicit X.Y.Z")
 
 
 def unreleased_body(changelog: str) -> str:
@@ -101,11 +101,11 @@ def roll_changelog(version: str, today: str, dry_run: bool) -> None:
     text = path.read_text(encoding="utf-8")
 
     if not re.search(r"^## \[Unreleased\]", text, re.MULTILINE):
-        sys.exit("CHANGELOG.md has no '## [Unreleased]' section to roll")
+        raise SystemExit("CHANGELOG.md has no '## [Unreleased]' section to roll")
 
     body = unreleased_body(text)
     if not body:
-        sys.exit(
+        raise SystemExit(
             "CHANGELOG.md '## [Unreleased]' is empty.\n"
             "Write what changed there first — those notes become the release notes."
         )
@@ -142,7 +142,7 @@ def bump_versions(old: str, new: str, dry_run: bool) -> None:
             pattern, lambda m: f"{m.group(1)}{new}{m.group(3)}", text, flags=re.MULTILINE
         )
         if count == 0:
-            sys.exit(f"{rel}: no version found to bump")
+            raise SystemExit(f"{rel}: no version found to bump")
         print(f"  {rel}: {old} -> {new}")
         if not dry_run:
             path.write_text(updated, encoding="utf-8")
@@ -179,7 +179,7 @@ def main() -> int:
     today = dt.date.today().isoformat()
 
     if new == old:
-        sys.exit(f"Version is already {new}")
+        raise SystemExit(f"Version is already {new}")
 
     print(f"Preparing {old} -> {new}")
     if reason:

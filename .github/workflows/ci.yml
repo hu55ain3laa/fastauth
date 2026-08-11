@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: nothing in CI writes to the repository. Without this, jobs
+# inherit whatever the repository default is, which may include write scopes.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Tests (Python ${{ matrix.python-version }})

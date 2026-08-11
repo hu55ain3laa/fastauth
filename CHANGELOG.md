@@ -39,8 +39,22 @@ release can break your code. See
   a test failure rather than something noticed later by a user.
 - A weekly external link check for the documentation, advisory only so a
   third-party site being briefly unreachable never fails a build.
+- `tests/test_cli.py` covers settings discovery, `.env` parsing, role
+  initialization and superadmin creation. CLI coverage rises from 34% to 74%
+  and the project total from 81% to 89%.
 
 ### Fixed
+
+- **The CLI could discover a wrong database URL.** A pattern like
+  `create_engine("sqlite:///" + name)` matched the settings regex and yielded
+  `"sqlite:///"` — a URL that looks plausible and points nowhere. The patterns
+  now require the string literal to be the complete value, so a concatenated
+  expression falls through to importing the module and evaluating it properly.
+- **A `.env` file could override the real environment.** `SECRET_KEY` set in a
+  deployment was silently replaced by a stale `.env` shipped in the image,
+  signing every token with the wrong key. The real environment now always
+  wins, and `.env` fills in only what is missing.
+- Removed an unused import from `exceptions.py`.
 
 - The CI consistency job failed on every dependency-update pull request. Its
   changelog check diffed against the base branch with a three-dot range, which
@@ -50,6 +64,8 @@ release can break your code. See
 
 ### Changed
 
+- Every workflow now declares least-privilege `permissions`, so CI jobs get a
+  read-only token instead of inheriting the repository default.
 - The publish workflow validates the release before publishing rather than
   after, so a missing changelog section stops the release instead of producing
   one with empty notes.

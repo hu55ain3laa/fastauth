@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from typing import Optional, Dict, Any, Union
+from typing import Optional, Dict, Any
 
 
 class FastAuthException(HTTPException):
