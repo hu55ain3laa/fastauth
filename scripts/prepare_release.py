@@ -43,6 +43,34 @@ def current_version() -> str:
     return match.group(1)
 
 
+def infer_bump(changelog: str) -> tuple[str, str]:
+    """Work out the bump from what the Unreleased section actually says.
+
+    The changelog already records whether something was removed, added or
+    fixed, so it can answer "which number moves" without anyone deciding.
+
+    Returns (bump, reason).
+    """
+    body = unreleased_body(changelog)
+    headings = set(re.findall(r"^### (\w+)", body, re.MULTILINE))
+    breaking = bool(re.search(r"\bBREAKING\b", body))
+
+    if breaking:
+        return "major", "the notes are marked BREAKING"
+    if "Removed" in headings:
+        return "major", "something was removed, which breaks callers using it"
+    if headings & {"Added", "Changed", "Deprecated"}:
+        why = ", ".join(sorted(headings & {"Added", "Changed", "Deprecated"}))
+        return "minor", f"new or changed behaviour ({why}) with nothing removed"
+    if headings & {"Fixed", "Security"}:
+        return "patch", "fixes only"
+    sys.exit(
+        "Cannot infer the bump: the Unreleased section has no recognised\n"
+        "### heading. Use Added / Changed / Deprecated / Removed / Fixed /\n"
+        "Security, or pass the bump explicitly."
+    )
+
+
 def next_version(current: str, spec: str) -> str:
     if re.fullmatch(r"\d+\.\d+\.\d+", spec):
         return spec
@@ -50,13 +78,22 @@ def next_version(current: str, spec: str) -> str:
     if len(parts) != 3 or not all(p.isdigit() for p in parts):
         sys.exit(f"Cannot bump non-numeric version {current!r}; pass an explicit version")
     major, minor, patch = (int(p) for p in parts)
+
+    # Pre-1.0, a breaking change bumps the minor rather than declaring 1.0.
+    # Reaching 1.0 is a deliberate statement about stability, never a side
+    # effect of removing something.
+    if spec == "major" and major == 0:
+        print("  note: pre-1.0, so a breaking change bumps the minor, not to 1.0.0")
+        print("        pass an explicit 1.0.0 when you mean to declare stability.")
+        spec = "minor"
+
     if spec == "major":
         return f"{major + 1}.0.0"
     if spec == "minor":
         return f"{major}.{minor + 1}.0"
     if spec == "patch":
         return f"{major}.{minor}.{patch + 1}"
-    sys.exit(f"Unknown bump {spec!r}: use major, minor, patch, or an explicit X.Y.Z")
+    sys.exit(f"Unknown bump {spec!r}: use major, minor, patch, auto, or an explicit X.Y.Z")
 
 
 def unreleased_body(changelog: str) -> str:
@@ -120,18 +157,41 @@ def bump_versions(old: str, new: str, dry_run: bool) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("bump", help="major, minor, patch, or an explicit X.Y.Z")
+    parser.add_argument(
+        "bump",
+        nargs="?",
+        default="auto",
+        help="auto (default), major, minor, patch, or an explicit X.Y.Z",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Show changes, write nothing")
+    parser.add_argument(
+        "--print-version",
+        action="store_true",
+        help="Print only the resulting version and exit, for scripts and CI",
+    )
     args = parser.parse_args()
 
     old = current_version()
-    new = next_version(old, args.bump)
+    changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+    spec, reason = args.bump, None
+    if spec == "auto":
+        spec, reason = infer_bump(changelog)
+
+    if args.print_version:
+        print(next_version(old, spec))
+        return 0
+
+    new = next_version(old, spec)
     today = dt.date.today().isoformat()
 
     if new == old:
         sys.exit(f"Version is already {new}")
 
-    print(f"Preparing {old} -> {new}\n")
+    print(f"Preparing {old} -> {new}")
+    if reason:
+        print(f"  {spec} bump inferred: {reason}")
+    print()
     roll_changelog(new, today, args.dry_run)
     bump_versions(old, new, args.dry_run)
 

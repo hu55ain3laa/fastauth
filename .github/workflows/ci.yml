@@ -46,6 +46,22 @@ jobs:
       - name: Check versions, changelog and domains
         run: python scripts/check_release.py
 
+      # The changelog is the input the whole release pipeline runs on: it
+      # decides the version bump and becomes the release notes. A library
+      # change with no entry means a release that cannot describe itself.
+      - name: Warn when library changes have no changelog entry
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)
+          touches_lib=$(echo "$changed" | grep -c '^fastauth/' || true)
+          touches_log=$(echo "$changed" | grep -c '^CHANGELOG.md$' || true)
+          if [ "$touches_lib" -gt 0 ] && [ "$touches_log" -eq 0 ]; then
+            echo "::warning::This changes fastauth/ but not CHANGELOG.md. Add an entry under [Unreleased] unless the change is invisible to users."
+          else
+            echo "Changelog check: nothing to flag"
+          fi
+
   # Without this a broken docs build only appears on Vercel after merge.
   docs:
     name: Docs site

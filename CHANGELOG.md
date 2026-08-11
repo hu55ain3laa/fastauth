@@ -21,6 +21,11 @@ release can break your code. See
   domains remain. CI runs it on every push and again before publishing.
 - CI now lints and builds the documentation site, so a broken docs build fails
   the pull request instead of surfacing on Vercel after merge.
+- A one-button **Release** workflow: it reads the changelog, infers whether the
+  change is a patch, minor or major, bumps every version location, tests,
+  commits, tags and pushes.
+- `prepare_release.py` infers the bump from the `[Unreleased]` headings, so the
+  version follows from what changed rather than from a judgement call.
 
 ### Changed
 

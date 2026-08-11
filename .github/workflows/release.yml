@@ -1,0 +1,109 @@
+name: Release
+
+# One-button release. Actions → Release → Run workflow.
+#
+# Reads the CHANGELOG's [Unreleased] section, works out whether that is a
+# patch, minor or major, bumps every version location, commits, tags, and
+# pushes. Pushing the tag triggers publish.yml, which tests, builds, publishes
+# to PyPI and creates the GitHub release from those same notes.
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump (auto reads the changelog)"
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
+      dry_run:
+        description: "Show what would happen without pushing anything"
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # A PAT lets the tag push trigger publish.yml. Tags pushed with the
+      # default GITHUB_TOKEN deliberately do not start other workflows, so
+      # without one we stop short of tagging and tell you the commands.
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Work out the new version
+        id: version
+        run: |
+          VERSION=$(python scripts/prepare_release.py "${{ inputs.bump }}" --print-version)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing $VERSION"
+
+      - name: Prepare the release
+        run: python scripts/prepare_release.py "${{ inputs.bump }}"
+
+      - name: Run tests against the bumped tree
+        run: pytest tests/ -q
+
+      - name: Show the diff
+        run: git --no-pager diff
+
+      - name: Stop here on a dry run
+        if: ${{ inputs.dry_run }}
+        run: |
+          {
+            echo "### Dry run for v${{ steps.version.outputs.version }}"
+            echo ""
+            echo "Nothing was committed or pushed. The diff above is what would ship."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit, tag and push
+        if: ${{ !inputs.dry_run }}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          HAS_PAT: ${{ secrets.RELEASE_TOKEN != '' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "v$VERSION"
+          git push origin HEAD
+
+          git tag -a "v$VERSION" -m "v$VERSION"
+
+          if [ "$HAS_PAT" = "true" ]; then
+            git push origin "v$VERSION"
+            {
+              echo "### Released v$VERSION"
+              echo ""
+              echo "Tag pushed. [publish.yml](../../actions/workflows/publish.yml) is"
+              echo "now testing, building, publishing to PyPI and creating the release."
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            {
+              echo "### v$VERSION prepared, tag not pushed"
+              echo ""
+              echo "The version bump is committed and pushed, but the tag was not,"
+              echo "because a tag pushed with the default token cannot trigger"
+              echo "publish.yml. Run these locally to ship it:"
+              echo ""
+              echo '```bash'
+              echo "git pull"
+              echo "git tag -a v$VERSION -m \"v$VERSION\""
+              echo "git push origin v$VERSION"
+              echo '```'
+              echo ""
+              echo "To make this fully automatic, add a repo secret **RELEASE_TOKEN**"
+              echo "containing a fine-grained PAT with Contents: read and write."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
