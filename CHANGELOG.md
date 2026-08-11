@@ -34,6 +34,14 @@ release can break your code. See
   the security-critical paths higher: `core/auth.py` 94%, routers 96%,
   `security/` 97-100%.
 
+### Fixed
+
+- The CI consistency job failed on every dependency-update pull request. Its
+  changelog check diffed against the base branch with a three-dot range, which
+  needs a merge base that the default shallow clone does not fetch. The job now
+  checks out full history, the check is advisory and cannot fail a build, and
+  dependency bumps skip it entirely.
+
 ### Changed
 
 - The publish workflow validates the release before publishing rather than

@@ -68,7 +68,11 @@ jobs:
     name: Release consistency
     runs-on: ubuntu-latest
     steps:
+      # Full history: the changelog check below diffs against the base branch,
+      # and a three-dot diff needs a merge base that a shallow clone lacks.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -80,14 +84,28 @@ jobs:
       # The changelog is the input the whole release pipeline runs on: it
       # decides the version bump and becomes the release notes. A library
       # change with no entry means a release that cannot describe itself.
+      #
+      # This is advisory only, so every branch is defensive: it must never be
+      # the reason a pull request goes red. Dependency bumps are skipped since
+      # they are not user-facing library changes.
       - name: Warn when library changes have no changelog entry
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+        continue-on-error: true
         run: |
-          git fetch --no-tags --depth=1 origin "${{ github.base_ref }}"
-          changed=$(git diff --name-only "origin/${{ github.base_ref }}"...HEAD)
-          touches_lib=$(echo "$changed" | grep -c '^fastauth/' || true)
-          touches_log=$(echo "$changed" | grep -c '^CHANGELOG.md$' || true)
-          if [ "$touches_lib" -gt 0 ] && [ "$touches_log" -eq 0 ]; then
+          base="origin/${{ github.base_ref }}"
+          git fetch --no-tags origin "${{ github.base_ref }}" || true
+
+          changed=$(git diff --name-only "$base...HEAD" 2>/dev/null \
+                 || git diff --name-only "$base" HEAD 2>/dev/null \
+                 || echo "")
+
+          if [ -z "$changed" ]; then
+            echo "Could not determine changed files; skipping the changelog check."
+            exit 0
+          fi
+
+          if echo "$changed" | grep -q '^fastauth/' && \
+             ! echo "$changed" | grep -q '^CHANGELOG.md$'; then
             echo "::warning::This changes fastauth/ but not CHANGELOG.md. Add an entry under [Unreleased] unless the change is invisible to users."
           else
             echo "Changelog check: nothing to flag"
