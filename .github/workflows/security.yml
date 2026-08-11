@@ -1,0 +1,90 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly, so a CVE published against an unchanged dependency is still
+    # found. Most vulnerabilities arrive without anyone touching the code.
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          language: ${{ matrix.language }}
+          # Includes the security-focused queries beyond the default set.
+          queries: security-and-quality
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:${{ matrix.language }}
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      # Checks the resolved dependency tree against the Python Packaging
+      # Advisory Database. This is the check that would have flagged an
+      # unmaintained JWT library before it shipped to users.
+      - name: Audit Python dependencies
+        run: |
+          pip install pip-audit
+          pip-audit --strict --progress-spinner off
+
+  npm-audit:
+    name: Docs dependency audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      # The docs site is a static build, so a vulnerable dev dependency is a
+      # build-time risk rather than a user-facing one. High and above only,
+      # to keep the signal worth reading.
+      - name: Audit npm dependencies
+        run: pnpm audit --audit-level high

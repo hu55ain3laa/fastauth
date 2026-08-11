@@ -52,6 +52,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+    "pytest-cov>=4.0",
     "httpx>=0.24",
 ]
 
@@ -69,3 +70,23 @@ include = ["fastauth*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Deprecation warnings from our own code should be visible while developing;
+# the deprecation tests assert on them explicitly.
+filterwarnings = [
+    "default::DeprecationWarning:fastauth.*",
+]
+
+[tool.coverage.run]
+source = ["fastauth"]
+omit = ["*/__pycache__/*"]
+
+[tool.coverage.report]
+# Auth code paths are the ones worth knowing about, so show which lines are
+# untested rather than only a percentage.
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]

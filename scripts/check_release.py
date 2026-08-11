@@ -16,19 +16,13 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-
-# Every place a version is written, and how to find it there. Adding a new
-# location here is all it takes for CI to start guarding it.
-VERSION_SITES = [
-    ("pyproject.toml", r'^version\s*=\s*"([^"]+)"', "version = \"X.Y.Z\""),
-    ("fastauth/__init__.py", r'^__version__\s*=\s*"([^"]+)"', '__version__ = "X.Y.Z"'),
-    ("web/lib/site.ts", r'^\s*version:\s*"([^"]+)"', 'version: "X.Y.Z"'),
-    ("README.md", r"fastauth-iq\.svg\?v=([0-9][^\"\s)]*)", "badge ?v=X.Y.Z"),
-]
-
-CANONICAL_DOMAIN = "fastauth.pythowner.com"
-STALE_DOMAINS = ["fastauth.vercel.app", "hu55ain3laa.github.io/fastauth"]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _release_meta import (  # noqa: E402
+    CANONICAL_DOMAIN,
+    ROOT,
+    STALE_DOMAINS,
+    VERSION_SITES,
+)
 
 problems: list[str] = []
 
@@ -43,13 +37,13 @@ def read(rel: str) -> str:
 
 def found_versions() -> dict[str, str]:
     versions: dict[str, str] = {}
-    for rel, pattern, shape in VERSION_SITES:
+    for rel, pattern in VERSION_SITES:
         text = read(rel)
         match = re.search(pattern, text, re.MULTILINE)
         if not match:
-            fail(f"{rel}: no version found (expected {shape})")
+            fail(f"{rel}: no version found")
             continue
-        versions[rel] = match.group(1)
+        versions[rel] = match.group(2)
     return versions
 
 

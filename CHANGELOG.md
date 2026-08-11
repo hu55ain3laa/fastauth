@@ -27,11 +27,21 @@ release can break your code. See
 - `prepare_release.py` infers the bump from the `[Unreleased]` headings, so the
   version follows from what changed rather than from a judgement call.
 
+- **Dependency and security automation**: Dependabot for Python, npm and GitHub
+  Actions; CodeQL analysis; `pip-audit` and `pnpm audit` on every push and
+  weekly, so a CVE published against an unchanged dependency is still found.
+- Coverage measurement with a regression threshold. Currently 81% overall, with
+  the security-critical paths higher: `core/auth.py` 94%, routers 96%,
+  `security/` 97-100%.
+
 ### Changed
 
 - The publish workflow validates the release before publishing rather than
   after, so a missing changelog section stops the release instead of producing
   one with empty notes.
+- The publish workflow now runs the full Python 3.10-3.14 matrix rather than
+  3.12 alone. A tag can point at a commit that never went through pull-request
+  CI, so this is the only guarantee that what ships runs everywhere it claims.
 
 ## [0.7.0] - 2026-08-11
 

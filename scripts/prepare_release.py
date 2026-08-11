@@ -24,15 +24,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-
-# (file, regex with the version as group 1). Keep in step with check_release.py.
-VERSION_SITES = [
-    ("pyproject.toml", r'(^version\s*=\s*")([^"]+)(")'),
-    ("fastauth/__init__.py", r'(^__version__\s*=\s*")([^"]+)(")'),
-    ("web/lib/site.ts", r'(^\s*version:\s*")([^"]+)(")'),
-    ("README.md", r"(fastauth-iq\.svg\?v=)([0-9][^\"\s)]*)()"),
-]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _release_meta import ROOT, REPO_URL, VERSION_SITES  # noqa: E402
 
 
 def current_version() -> str:
@@ -125,7 +118,7 @@ def roll_changelog(version: str, today: str, dry_run: bool) -> None:
 
     # Keep the compare links at the bottom pointing somewhere sensible.
     previous = current_version()
-    repo = "https://github.com/hu55ain3laa/fastauth"
+    repo = REPO_URL
     new = re.sub(
         r"^\[Unreleased\]:.*$",
         f"[Unreleased]: {repo}/compare/v{version}...HEAD\n"
