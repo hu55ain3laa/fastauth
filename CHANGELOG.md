@@ -7,7 +7,7 @@ for GitHub release notes, so each version's section is what you see on the
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and FastAuth follows [semantic versioning](https://semver.org): only a major
 release can break your code. See
-[Versioning](https://fastauth.vercel.app/docs/versioning) for the full policy.
+[Versioning](https://fastauth.pythowner.com/docs/versioning) for the full policy.
 
 ## [Unreleased]
 
@@ -15,7 +15,7 @@ release can break your code. See
 
 ### Added
 
-- **New documentation site** at [fastauth.vercel.app](https://fastauth.vercel.app),
+- **New documentation site** at [fastauth.pythowner.com](https://fastauth.pythowner.com),
   built with Next.js and MDX and deployed on Vercel. Includes full-text search,
   flow diagrams for the token and password reset cycles, a concepts guide that
   explains hashing, JWTs, cookies and RBAC from scratch, a symptom-first
@@ -104,7 +104,7 @@ ALTER TABLE user ADD COLUMN token_version INTEGER DEFAULT 0;
 ```
 
 Or use Alembic; see
-[Going to Production](https://fastauth.vercel.app/docs/production).
+[Going to Production](https://fastauth.pythowner.com/docs/production).
 
 ## [0.5.0]
 

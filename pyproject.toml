@@ -60,7 +60,7 @@ fastauth = "fastauth.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/hu55ain3laa/fastauth"
-Documentation = "https://fastauth.vercel.app"
+Documentation = "https://fastauth.pythowner.com"
 Source = "https://github.com/hu55ain3laa/fastauth"
 "Bug Reports" = "https://github.com/hu55ain3laa/fastauth/issues"
 

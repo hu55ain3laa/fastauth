@@ -6,8 +6,8 @@ role-based access control, ready-made routes, and database initialization.
 
 - Package name on PyPI: `fastauth_iq` (import as `fastauth`)
 - Python: 3.10+ · Stack: FastAPI, SQLModel (SQLAlchemy engine), PyJWT, bcrypt
-- Docs site: https://fastauth.vercel.app
-- Beginner tutorial: https://fastauth.vercel.app/docs/easy-mode
+- Docs site: https://fastauth.pythowner.com
+- Beginner tutorial: https://fastauth.pythowner.com/docs/easy-mode
 - Source: https://github.com/hu55ain3laa/fastauth
 
 ## Install

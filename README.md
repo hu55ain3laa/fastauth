@@ -9,14 +9,14 @@
   <a href="https://github.com/hu55ain3laa/fastauth/actions/workflows/ci.yml"><img src="https://github.com/hu55ain3laa/fastauth/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
 
-  <h3>📖 <a href="https://fastauth.vercel.app">Full Documentation Available Here</a></h3>
+  <h3>📖 <a href="https://fastauth.pythowner.com">Full Documentation Available Here</a></h3>
 </div>
 
 ## Documentation
 
-This README provides a quick overview of FastAuth. For a more complete, interactive documentation with live examples and responsive design, visit our **[full documentation site](https://fastauth.vercel.app)**.
+This README provides a quick overview of FastAuth. For a more complete, interactive documentation with live examples and responsive design, visit our **[full documentation site](https://fastauth.pythowner.com)**.
 
-New to FastAPI or building auth for the first time? Start with the **[Easy Mode guide for students](https://fastauth.vercel.app/docs/easy-mode)**: one file, five minutes, every step checked.
+New to FastAPI or building auth for the first time? Start with the **[Easy Mode guide for students](https://fastauth.pythowner.com/docs/easy-mode)**: one file, five minutes, every step checked.
 
 Using an AI coding assistant? This repo ships an [AGENTS.md](AGENTS.md) with the full API surface, so agents can integrate FastAuth correctly without guessing.
 

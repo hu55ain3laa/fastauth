@@ -8,7 +8,7 @@ export const site = {
   tagline: "Authentication for FastAPI, wired in one call",
   description:
     "FastAuth adds JWT access and refresh tokens, role-based access control, and ready-made login routes to any FastAPI + SQLModel app.",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://fastauth.vercel.app",
+  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://fastauth.pythowner.com",
   version: "0.7.0",
   package: "fastauth_iq",
   install: 'uv add fastauth_iq "fastapi[standard]"',
