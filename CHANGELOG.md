@@ -18,8 +18,9 @@ release can break your code. See
   and commented with what to check. The split exists because Dependabot
   proposed `upload-artifact` 4 to 7 without the paired `download-artifact`,
   which would have broken releases in a way no CI run could have caught.
-  The workflow refuses to queue anything unless `main` actually requires
-  status checks, since otherwise auto-merge would merge immediately.
+  The workflow reads every check on the commit itself and merges only when
+  all of them have finished successfully, so no branch protection is needed
+  and `main` stays open for the release workflow to push to.
 
 ### Fixed
 

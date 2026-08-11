@@ -1,16 +1,23 @@
 name: Dependabot auto-merge
 
-# Patch and minor dependency updates merge themselves once CI is green.
-# Major updates never do, and are labelled for review instead.
+# Merges patch and minor dependency updates once every check has passed.
+# Major updates are never merged automatically.
 #
-# The reason for that split is concrete: Dependabot proposed
-# actions/upload-artifact 4 -> 7 on its own, but publish.yml downloads that
-# artifact in a later job with actions/download-artifact. Bumping one without
-# the other would have broken releases. Dependabot cannot see relationships
-# like that, and no amount of CI would have caught it, because the artifact
-# handoff only runs during a real release.
+# This deliberately does not use `gh pr merge --auto`, which would require
+# branch protection on main to have anything to wait for. Protecting main
+# would also block release.yml from pushing the version bump, since the
+# Actions bot is not an administrator. Verifying the checks here instead
+# keeps main open and leaves nothing to configure.
+#
+# Runs on workflow_run rather than pull_request for two reasons: Dependabot
+# pull requests get a read-only token on pull_request, and by the time a
+# workflow_run fires the checks have results worth reading. Nothing from the
+# pull request is ever checked out or executed here; this job only calls the
+# API, so the elevated token is not exposed to branch contents.
 on:
-  pull_request:
+  workflow_run:
+    workflows: [CI, Security]
+    types: [completed]
 
 permissions:
   contents: write
@@ -18,62 +25,109 @@ permissions:
 
 jobs:
   auto-merge:
-    if: github.actor == 'dependabot[bot]'
+    # Whichever workflow finishes last is the one that finds everything green
+    # and merges. Earlier finishers exit quietly at the "all checks" gate.
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
-      - name: Read what kind of update this is
-        id: meta
-        uses: dependabot/fetch-metadata@v2
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      # `gh pr merge --auto` queues a merge behind the branch's *required*
-      # status checks. If main has none, there is nothing to wait for and the
-      # merge happens immediately — CI green or not. That failure mode is
-      # silent and would ship unreviewed, untested dependency changes into an
-      # auth library, so refuse to queue anything until protection exists.
-      - name: Require that main actually gates on CI
-        id: gate
+      - name: Decide whether to merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          checks=$(gh api "repos/$GITHUB_REPOSITORY/branches/main/protection/required_status_checks" \
-                     --jq '.contexts | length' 2>/dev/null || echo "0")
-          if [ "$checks" -gt 0 ]; then
-            echo "main requires $checks status check(s); auto-merge will wait for them"
-            echo "safe=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "safe=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Auto-merge skipped. main has no required status checks, so --auto would merge immediately without waiting for CI. Enable branch protection on main and require the CI checks."
+          set -euo pipefail
+
+          pr=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+                 --jq '.[0].number // empty' 2>/dev/null || true)
+          if [ -z "$pr" ]; then
+            echo "No pull request for $SHA; nothing to do."
+            exit 0
           fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Queue patch and minor updates for merge
-        if: |
-          steps.gate.outputs.safe == 'true' && (
-            steps.meta.outputs.update-type == 'version-update:semver-patch' ||
-            steps.meta.outputs.update-type == 'version-update:semver-minor'
-          )
-        run: gh pr merge --auto --squash "$PR_URL"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          title=$(gh pr view "$pr" --repo "$REPO" --json title --jq .title)
+          state=$(gh pr view "$pr" --repo "$REPO" --json state --jq .state)
+          echo "PR #$pr: $title"
 
-      - name: Flag major updates for a human
-        if: steps.meta.outputs.update-type == 'version-update:semver-major'
-        run: |
-          gh pr edit "$PR_URL" --add-label "major-update"
-          gh pr comment "$PR_URL" --body "$(cat <<'EOF'
-          Held for review: this is a **major** version update, so auto-merge is deliberately skipped.
+          if [ "$state" != "OPEN" ]; then
+            echo "Already $state; nothing to do."
+            exit 0
+          fi
+
+          # Grouped pull requests have no single version pair in the title.
+          # The groups in dependabot.yml are declared as
+          # `update-types: [minor, patch]`, so membership alone proves no
+          # major is included. Any other unparseable title is left alone.
+          if printf '%s' "$title" | grep -q -- "-minor-and-patch group"; then
+            echo "Grouped minor/patch update; safe by the group's own definition."
+            from="group"; to="group"
+          else
+            # Dependabot titles read "... from <old> to <new>". Comparing the
+            # leading number tells us whether this is a major bump without
+            # needing the metadata action, which workflow_run cannot use.
+            from=$(printf '%s' "$title" | sed -n 's/.* from \([0-9][^ ]*\) to .*/\1/p')
+            to=$(printf '%s'   "$title" | sed -n 's/.* to \([0-9][^ ]*\).*/\1/p')
+            if [ -z "$from" ] || [ -z "$to" ]; then
+              echo "::warning::Could not read versions from '$title'. Leaving this for a human."
+              exit 0
+            fi
+          fi
+
+          if [ "${from%%.*}" != "${to%%.*}" ]; then
+            echo "Major update ($from -> $to). Never merged automatically."
+            gh pr edit "$pr" --repo "$REPO" --add-label "major-update" || true
+            marker="held-for-review-comment"
+            if ! gh pr view "$pr" --repo "$REPO" --json comments \
+                   --jq '.comments[].body' | grep -q "$marker"; then
+              gh pr comment "$pr" --repo "$REPO" --body "$(cat <<EOF
+          Held for review: this is a **major** update ($from to $to), so it is not merged automatically.
 
           Worth checking before merging:
 
-          - Does anything else need to move with it? Paired actions such as `upload-artifact` and `download-artifact` must share a major version.
-          - Does the changelog mention removed inputs, dropped runtime versions, or changed defaults?
-          - Is the action deprecated in favour of a successor?
+          - Does something else have to move with it? Paired actions such as \`upload-artifact\` and \`download-artifact\` must share a major version.
+          - Does the changelog mention removed inputs, dropped runtimes, or changed defaults?
+          - Is the action or package deprecated in favour of a successor?
 
-          CI passing is necessary but not sufficient here; some breakage only shows up during a real release.
+          Green CI is necessary but not sufficient. Some breakage only appears during a real release.
+
+          <!-- $marker -->
           EOF
-          )"
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              )"
+            fi
+            exit 0
+          fi
+
+          # Every check on this commit must have finished, and finished well.
+          # Anything still running means another workflow will fire this job
+          # again later, so exiting now is safe rather than premature.
+          checks=$(gh api "repos/$REPO/commits/$SHA/check-runs?per_page=100" \
+                     --jq '.check_runs[] | [.name, .status, (.conclusion // "none")] | @tsv')
+
+          if [ -z "$checks" ]; then
+            echo "No checks reported yet; waiting for a later run."
+            exit 0
+          fi
+
+          echo "$checks" | while IFS=$'\t' read -r name status conclusion; do
+            printf '  %-34s %-12s %s\n' "$name" "$status" "$conclusion"
+          done
+
+          pending=$(echo "$checks" | awk -F'\t' '$2 != "completed"' | wc -l | tr -d ' ')
+          if [ "$pending" -gt 0 ]; then
+            echo "$pending check(s) still running. A later workflow_run will retry."
+            exit 0
+          fi
+
+          # skipped and neutral are fine: External links only runs on a schedule.
+          bad=$(echo "$checks" \
+                | awk -F'\t' '$3 != "success" && $3 != "skipped" && $3 != "neutral" { print $1 }')
+          if [ -n "$bad" ]; then
+            echo "Not merging. These checks did not pass:"
+            echo "$bad" | sed 's/^/  /'
+            exit 0
+          fi
+
+          echo "All checks passed and this is a $from -> $to update. Merging."
+          gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
