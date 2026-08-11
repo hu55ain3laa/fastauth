@@ -78,12 +78,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Release notes come from the matching CHANGELOG.md section, so what
+      # users read on the releases page is the same text we maintain in the
+      # repo. Falls back to GitHub's commit list only if the section is missing.
+      - name: Extract release notes from CHANGELOG.md
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if awk -v v="$VERSION" '
+                $0 ~ "^## \\[" v "\\]" { found = 1; next }
+                found && /^## \[/      { exit }
+                found                  { print }
+              ' CHANGELOG.md | sed '/./,$!d' > notes.md && [ -s notes.md ]; then
+            echo "Found CHANGELOG section for $VERSION"
+            echo "have_notes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No CHANGELOG.md section for $VERSION, falling back to generated notes"
+            echo "have_notes=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             echo "Release $GITHUB_REF_NAME already exists, skipping"
+            exit 0
+          fi
+          if [ "${{ steps.notes.outputs.have_notes }}" = "true" ]; then
+            gh release create "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "FastAuth $GITHUB_REF_NAME" \
+              --notes-file notes.md \
+              --verify-tag
           else
             gh release create "$GITHUB_REF_NAME" \
               --repo "$GITHUB_REPOSITORY" \
