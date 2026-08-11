@@ -8,6 +8,7 @@ on:
 
 jobs:
   test:
+    name: Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -29,3 +30,70 @@ jobs:
 
       - name: Run tests
         run: pytest tests/ -v
+
+  # The version is written in four files and the domain in five. Catching a
+  # mismatch here is far cheaper than catching it after a tag is pushed.
+  consistency:
+    name: Release consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check versions, changelog and domains
+        run: python scripts/check_release.py
+
+  # Without this a broken docs build only appears on Vercel after merge.
+  docs:
+    name: Docs site
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Check internal documentation links resolve
+        run: |
+          # Every /docs/... link in the MDX must correspond to a real page.
+          missing=0
+          grep -rhoE '\]\(/docs[a-zA-Z0-9/_-]*\)' app \
+            | grep -oE '/docs[a-zA-Z0-9/_-]*' \
+            | sort -u \
+            > /tmp/links.txt
+          while read -r link; do
+            [ -z "$link" ] && continue
+            if [ "$link" = "/docs" ]; then
+              target="app/docs/page.mdx"
+            else
+              target="app${link}/page.mdx"
+            fi
+            if [ ! -f "$target" ]; then
+              echo "::error::Broken docs link $link (no $target)"
+              missing=1
+            fi
+          done < /tmp/links.txt
+          [ "$missing" = 0 ] && echo "All $(wc -l < /tmp/links.txt) internal docs links resolve"
+          exit $missing

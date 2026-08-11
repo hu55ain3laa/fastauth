@@ -11,6 +11,23 @@ release can break your code. See
 
 ## [Unreleased]
 
+### Added
+
+- `scripts/prepare_release.py` bumps every version location and rolls the
+  changelog's `[Unreleased]` section into a dated release in one command. It
+  refuses to run when there are no notes to release.
+- `scripts/check_release.py` verifies the version agrees across all four files
+  it is written in, that the changelog has notes for it, and that no stale
+  domains remain. CI runs it on every push and again before publishing.
+- CI now lints and builds the documentation site, so a broken docs build fails
+  the pull request instead of surfacing on Vercel after merge.
+
+### Changed
+
+- The publish workflow validates the release before publishing rather than
+  after, so a missing changelog section stops the release instead of producing
+  one with empty notes.
+
 ## [0.7.0] - 2026-08-11
 
 ### Added

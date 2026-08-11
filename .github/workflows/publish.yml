@@ -32,14 +32,12 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Check tag matches package version
-        run: |
-          TAG="${GITHUB_REF_NAME#v}"
-          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
-          if [ "$TAG" != "$VERSION" ]; then
-            echo "Tag v$TAG does not match pyproject version $VERSION"
-            exit 1
-          fi
+      # Runs before anything is published: verifies the tag matches the version
+      # in all four files it is written in, that the changelog has notes for
+      # this release, and that no stale domains slipped in. A release with no
+      # notes fails here rather than reaching PyPI, where it cannot be undone.
+      - name: Validate the release
+        run: python scripts/check_release.py --tag "$GITHUB_REF_NAME" --changelog
 
       - name: Build sdist and wheel
         run: |
