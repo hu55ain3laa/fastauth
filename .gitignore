@@ -45,3 +45,4 @@ example.db
 .DS_Store
 
 RELEASE_NOTES.md
+.fastauth-secret

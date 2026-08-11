@@ -1,106 +1,106 @@
-// Check for saved theme preference or use the system preference
-const themeToggleBtn = document.getElementById("theme-toggle");
+// ---------------------------------------------------------------------------
+// Theme toggle — persists choice, follows system preference until overridden
+// ---------------------------------------------------------------------------
+const themeToggle = document.getElementById("theme-toggle");
 
-// Function to set theme
-function setTheme(theme) {
-  const sunIcon = document.getElementById("sun-icon");
-  const moonIcon = document.getElementById("moon-icon");
-
+function applyTheme(theme) {
   if (theme === "dark") {
-    document.documentElement.classList.add("dark");
-    document.documentElement.style.colorScheme = "dark";
-    localStorage.setItem("theme", "dark");
-    // Update icons
-    sunIcon.classList.remove("hidden");
-    sunIcon.classList.add("block");
-    moonIcon.classList.remove("block");
-    moonIcon.classList.add("hidden");
+    document.documentElement.dataset.theme = "dark";
   } else {
-    document.documentElement.classList.remove("dark");
-    document.documentElement.style.colorScheme = "light";
-    localStorage.setItem("theme", "light");
-    // Update icons
-    moonIcon.classList.remove("hidden");
-    moonIcon.classList.add("block");
-    sunIcon.classList.remove("block");
-    sunIcon.classList.add("hidden");
+    delete document.documentElement.dataset.theme;
   }
+  document.documentElement.style.colorScheme = theme;
 }
 
-// Check for saved theme preference
-const savedTheme = localStorage.getItem("theme");
-
-// If user has a saved preference, use it
-if (savedTheme) {
-  setTheme(savedTheme);
-}
-// Otherwise, use system preference
-else if (
-  window.matchMedia &&
-  window.matchMedia("(prefers-color-scheme: dark)").matches
-) {
-  setTheme("dark");
-}
-
-// Add click event to toggle button
-themeToggleBtn.addEventListener("click", () => {
-  if (document.documentElement.classList.contains("dark")) {
-    setTheme("light");
-  } else {
-    setTheme("dark");
-  }
+themeToggle.addEventListener("click", () => {
+  const next =
+    document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  applyTheme(next);
+  localStorage.setItem("theme", next);
 });
 
-// Watch for system preference changes
 window
   .matchMedia("(prefers-color-scheme: dark)")
   .addEventListener("change", (e) => {
     if (!localStorage.getItem("theme")) {
-      // Only react if user hasn't manually set a preference
-      setTheme(e.matches ? "dark" : "light");
+      applyTheme(e.matches ? "dark" : "light");
     }
   });
 
+// ---------------------------------------------------------------------------
+// Copy buttons — .js-copy uses data-copy; bare .copy-btn copies its panel code
+// ---------------------------------------------------------------------------
+function flash(button) {
+  const icon = button.querySelector(".ph");
+  if (!icon) return;
+  icon.classList.replace("ph-copy", "ph-check");
+  setTimeout(() => {
+    icon.classList.replace("ph-check", "ph-copy");
+  }, 1400);
+}
 
-// Mobile Navigation Menu functionality
-document.addEventListener('DOMContentLoaded', function() {
-  const mobileMenuButton = document.getElementById('mobile-menu-button');
-  const mobileMenu = document.getElementById('mobile-menu');
-  
-  if (mobileMenuButton && mobileMenu) {
-    // Toggle mobile menu when button is clicked
-    mobileMenuButton.addEventListener('click', function() {
-      mobileMenu.classList.toggle('hidden');
-    });
-    
-    // Hide mobile menu when clicking on menu items that aren't in collapsible sections
-    const mobileMenuItems = mobileMenu.querySelectorAll('a:not(.mobile-section-content a)');
-    mobileMenuItems.forEach(item => {
-      item.addEventListener('click', function() {
-        mobileMenu.classList.add('hidden');
-      });
-    });
-    
-    // Handle visibility on resize
-    window.addEventListener('resize', function() {
-      if (window.innerWidth >= 768) {
-        mobileMenu.classList.add('hidden');
-      }
-    });
-  }
+document.querySelectorAll(".copy-btn, .js-copy").forEach((button) => {
+  button.addEventListener("click", () => {
+    let text = button.dataset.copy;
+    if (!text) {
+      const panel = button.closest(".panel");
+      const code = panel && panel.querySelector("code");
+      text = code ? code.textContent : "";
+    }
+    navigator.clipboard.writeText(text).then(() => flash(button));
+  });
 });
 
-// Function to toggle collapsible sections in mobile menu
-function toggleMobileSection(button) {
-  // Toggle the hidden class on the next sibling element (content)
-  const content = button.nextElementSibling;
-  content.classList.toggle('hidden');
-  
-  // Rotate the arrow icon
-  const icon = button.querySelector('svg');
-  if (content.classList.contains('hidden')) {
-    icon.style.transform = 'rotate(0deg)';
-  } else {
-    icon.style.transform = 'rotate(180deg)';
-  }
+// ---------------------------------------------------------------------------
+// Sidebar scrollspy — highlight the section currently in view
+// ---------------------------------------------------------------------------
+const tocLinks = Array.from(document.querySelectorAll(".toc a"));
+const sections = tocLinks
+  .map((link) => document.querySelector(link.getAttribute("href")))
+  .filter(Boolean);
+
+function setActive(id) {
+  tocLinks.forEach((link) =>
+    link.classList.toggle("active", link.getAttribute("href") === "#" + id)
+  );
+}
+
+if ("IntersectionObserver" in window && sections.length) {
+  const visible = new Set();
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) visible.add(entry.target.id);
+        else visible.delete(entry.target.id);
+      });
+      // Highlight the visible section closest to the top of the page
+      const first = sections.find((section) => visible.has(section.id));
+      if (first) setActive(first.id);
+    },
+    { rootMargin: "-20% 0px -60% 0px" }
+  );
+  sections.forEach((section) => observer.observe(section));
+}
+
+// Collapse the mobile ToC after choosing a destination
+const mobileToc = document.querySelector(".toc-mobile");
+if (mobileToc) {
+  mobileToc.querySelectorAll("a").forEach((link) => {
+    link.addEventListener("click", () => mobileToc.removeAttribute("open"));
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Token decoder — hovering a segment highlights its decoded claims (and back)
+// ---------------------------------------------------------------------------
+const decoder = document.getElementById("decoder");
+if (decoder) {
+  decoder.querySelectorAll("[data-seg]").forEach((el) => {
+    el.addEventListener("mouseenter", () => {
+      decoder.classList.add("hl-" + el.dataset.seg);
+    });
+    el.addEventListener("mouseleave", () => {
+      decoder.classList.remove("hl-" + el.dataset.seg);
+    });
+  });
 }

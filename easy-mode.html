@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FastAuth Easy Mode · Auth for your class project in five minutes</title>
+    <meta
+      name="description"
+      content="The easiest way to add real logins to a FastAPI app. One file, copy and paste, five minutes. Made for students and first-timers."
+    />
+    <script>
+      // Set theme before first paint to avoid a flash
+      (function () {
+        var saved = localStorage.getItem("theme");
+        var dark = saved
+          ? saved === "dark"
+          : window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (dark) document.documentElement.dataset.theme = "dark";
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Spline+Sans+Mono:ital,wght@0,300..700;1,300..700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/@phosphor-icons/web@2.1.2/src/regular/style.css"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Top bar -->
+    <nav class="topbar">
+      <a class="topbar-logo" href="index.html" aria-label="FastAuth home">
+        <img src="FastAuth.svg" alt="FastAuth" />
+      </a>
+      <a class="topbar-version" href="https://pypi.org/project/fastauth-iq/">v0.6.0</a>
+      <div class="topbar-nav">
+        <a href="index.html">full docs</a>
+        <a class="optional" href="index.html#api-reference">api</a>
+        <a href="https://github.com/hu55ain3laa/fastauth">github</a>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle color theme">
+          <i class="ph ph-moon icon-moon" aria-hidden="true"></i>
+          <i class="ph ph-sun icon-sun" aria-hidden="true"></i>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <header class="tut-hero">
+      <p class="hero-eyebrow">Easy mode · for students</p>
+      <h1>Real logins for your class project. <em>Zero headache.</em></h1>
+      <p class="hero-sub">
+        Signup, login, protected pages, and an admin user for your FastAPI
+        app. You will copy one file and run two commands. That's the whole
+        tutorial.
+      </p>
+      <div class="tut-facts">
+        <span class="tut-fact"><i class="ph ph-file-py" aria-hidden="true"></i>1 file</span>
+        <span class="tut-fact"><i class="ph ph-timer" aria-hidden="true"></i>5 minutes</span>
+        <span class="tut-fact"><i class="ph ph-copy" aria-hidden="true"></i>copy &amp; paste ready</span>
+      </div>
+    </header>
+
+    <main class="tut">
+      <!-- Step 1 -->
+      <div class="tut-step">
+        <div class="tut-step-num">1</div>
+        <div>
+          <h2>Make a project</h2>
+          <p>
+            Open a terminal and run these commands. They create a folder,
+            move into it, and install FastAuth together with FastAPI.
+          </p>
+          <div class="panel">
+            <div class="panel-bar">
+              <span class="file">terminal</span>
+              <button class="copy-btn" aria-label="Copy code"><i class="ph ph-copy" aria-hidden="true"></i></button>
+            </div>
+            <pre><code class="language-bash">uv init myapp
+cd myapp
+uv add fastauth_iq "fastapi[standard]"</code></pre>
+          </div>
+          <div class="note">
+            <i class="ph ph-info note-icon" aria-hidden="true"></i>
+            <p>
+              No <code>uv</code> on your computer? Install it first:
+              <code>brew install uv</code> on macOS,
+              <code>winget install --id=astral-sh.uv -e</code> on Windows, or
+              see the
+              <a href="https://docs.astral.sh/uv/getting-started/installation/">uv installation guide</a>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="tut-step">
+        <div class="tut-step-num">2</div>
+        <div>
+          <h2>Paste this file</h2>
+          <p>
+            Create a file called <strong>main.py</strong> in your folder and
+            paste all of this in. You don't need to change anything yet.
+          </p>
+          <div class="panel">
+            <div class="panel-bar">
+              <span class="file">main.py</span>
+              <button class="copy-btn" aria-label="Copy code"><i class="ph ph-copy" aria-hidden="true"></i></button>
+            </div>
+            <pre><code class="language-python">from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI
+from sqlmodel import create_engine
+
+from fastauth import FastAuth, User
+
+# A database file that lives next to your code. No setup needed.
+engine = create_engine("sqlite:///./app.db",
+                       connect_args={"check_same_thread": False})
+
+auth = FastAuth(
+    secret_key="any-long-random-text-works-here",
+    engine=engine,
+)
+
+# On startup: create the database and an admin user (admin / admin123)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    auth.initialize_db(admin_username="admin", admin_password="admin123")
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
+# This one line adds signup, login, logout, and more to your app
+auth.setup(app)
+
+# Your first protected page: only logged-in users can open it
+@app.get("/protected")
+def protected(user: User = Depends(auth.current_user)):
+    return {"hello": user.username}</code></pre>
+          </div>
+          <p>
+            The <code>secret_key</code> is what signs your login tokens, so
+            make it truly random. Generate one in your terminal and paste the
+            output into <code>secret_key=""</code>:
+          </p>
+          <div class="panel">
+            <div class="panel-bar">
+              <span class="file">terminal</span>
+              <button class="copy-btn js-copy" data-copy="openssl rand -hex 32" aria-label="Copy openssl command"><i class="ph ph-copy" aria-hidden="true"></i></button>
+            </div>
+            <pre><code class="language-bash">openssl rand -hex 32
+
+# no openssl? (common on Windows) use Python instead
+uv run python -c "import secrets; print(secrets.token_hex(32))"</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="tut-step">
+        <div class="tut-step-num">3</div>
+        <div>
+          <h2>Run it</h2>
+          <div class="panel">
+            <div class="panel-bar">
+              <span class="file">terminal</span>
+              <button class="copy-btn" aria-label="Copy code"><i class="ph ph-copy" aria-hidden="true"></i></button>
+            </div>
+            <pre><code class="language-bash">uv run fastapi dev main.py</code></pre>
+          </div>
+          <div class="checkpoint">
+            <div class="checkpoint-label"><i class="ph ph-seal-check" aria-hidden="true"></i>Checkpoint · your terminal should say</div>
+            <pre>Created role: superadmin
+Created new superadmin user: admin
+INFO   Application startup complete.
+INFO   Uvicorn running on http://127.0.0.1:8000</pre>
+          </div>
+          <p>
+            Your app is now running with a full auth system inside it. Leave
+            the terminal open.
+          </p>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="tut-step">
+        <div class="tut-step-num">4</div>
+        <div>
+          <h2>Log in and try it</h2>
+          <p>
+            Open
+            <a href="http://127.0.0.1:8000/docs">http://127.0.0.1:8000/docs</a>
+            in your browser. FastAPI draws an interactive page with every
+            endpoint your app now has. Then:
+          </p>
+          <ol>
+            <li>
+              Click the green <strong>Authorize</strong> button at the top
+              right and log in with username <code>admin</code> and password
+              <code>admin123</code>
+            </li>
+            <li>
+              Open <strong>GET /protected</strong>, click
+              <strong>Try it out</strong>, then <strong>Execute</strong>
+            </li>
+          </ol>
+          <div class="checkpoint">
+            <div class="checkpoint-label"><i class="ph ph-seal-check" aria-hidden="true"></i>Checkpoint · the response body should be</div>
+            <pre>{
+  "hello": "admin"
+}</pre>
+          </div>
+          <p>
+            Now click <strong>Authorize</strong> again and press
+            <strong>Logout</strong>, then try <strong>GET /protected</strong>
+            once more. You get a <code>401 Not authenticated</code> error.
+            That is your protection working.
+          </p>
+          <p>
+            You can also register a normal user with
+            <strong>POST /users</strong> and log in as them. Try it: give
+            yourself a username, an email, and a password.
+          </p>
+        </div>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="tut-step">
+        <div class="tut-step-num">5</div>
+        <div>
+          <h2>That's it. You have auth.</h2>
+          <p>Here is what FastAuth quietly did for you:</p>
+          <ul>
+            <li>
+              <strong>Signup and login endpoints</strong>: <code>/users</code>,
+              <code>/token</code>, <code>/users/me</code>, and
+              <code>/logout</code> were added by <code>auth.setup(app)</code>
+            </li>
+            <li>
+              <strong>Passwords are hashed</strong> with bcrypt, so real
+              passwords are never stored in your database
+            </li>
+            <li>
+              <strong>Logins use JWT tokens</strong>: after login, the client
+              gets a signed token and sends it back with each request
+            </li>
+            <li>
+              <strong>Roles are ready</strong>: an admin role already exists,
+              and <code>auth.is_admin()</code> protects admin-only routes the
+              same way you protected <code>/protected</code>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Troubleshooting -->
+      <section id="when-something-breaks">
+        <p class="eyebrow"><a href="#when-something-breaks">#when-something-breaks</a></p>
+        <h2>When something breaks</h2>
+        <p>
+          Every one of these has happened to every one of us. Find your error,
+          apply the fix, carry on.
+        </p>
+        <div class="fixes">
+          <div class="fix">
+            <span class="err"><i class="ph ph-x-circle" aria-hidden="true"></i>command not found: uv</span>
+            <p class="cure">uv isn't installed yet. Go back to step 1 and install it, then close and reopen your terminal.</p>
+          </div>
+          <div class="fix">
+            <span class="err"><i class="ph ph-x-circle" aria-hidden="true"></i>ModuleNotFoundError: No module named 'fastauth'</span>
+            <p class="cure">You're outside your project folder, or the install didn't run. <code>cd myapp</code>, then run <code>uv add fastauth_iq</code> again, and always start the app with <code>uv run</code>.</p>
+          </div>
+          <div class="fix">
+            <span class="err"><i class="ph ph-x-circle" aria-hidden="true"></i>401 Not authenticated</span>
+            <p class="cure">You're not logged in. Click <strong>Authorize</strong> in <code>/docs</code> and log in first. Tokens also expire after 30 minutes, so just log in again.</p>
+          </div>
+          <div class="fix">
+            <span class="err"><i class="ph ph-x-circle" aria-hidden="true"></i>403 Forbidden / Insufficient permissions</span>
+            <p class="cure">You're logged in, but your user doesn't have the role that route requires. Log in as <code>admin</code>, or assign the role with <strong>POST /roles/assign</strong>.</p>
+          </div>
+          <div class="fix">
+            <span class="err"><i class="ph ph-x-circle" aria-hidden="true"></i>Incorrect username or password</span>
+            <p class="cure">Check for typos, the password is <code>admin123</code> exactly. If you changed the code, delete the <code>app.db</code> file and restart so the admin user is created again.</p>
+          </div>
+          <div class="fix">
+            <span class="err"><i class="ph ph-x-circle" aria-hidden="true"></i>sqlite3.OperationalError: no such column / no such table</span>
+            <p class="cure">You changed a model after the database file was created. While learning, just delete <code>app.db</code> and restart the app. It will be rebuilt fresh.</p>
+          </div>
+          <div class="fix">
+            <span class="err"><i class="ph ph-x-circle" aria-hidden="true"></i>Address already in use</span>
+            <p class="cure">The app is already running in another terminal. Find that window and stop it with <code>Ctrl+C</code>, then run it again.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Glossary -->
+      <section id="words-you-will-meet" style="margin-top:3rem">
+        <p class="eyebrow"><a href="#words-you-will-meet">#words-you-will-meet</a></p>
+        <h2>Words you'll meet</h2>
+        <dl class="glossary">
+          <div class="term">
+            <dt>JWT</dt>
+            <dd>A signed pass card. Your server hands it out at login and checks the signature on every request.</dd>
+          </div>
+          <div class="term">
+            <dt>hash</dt>
+            <dd>A one-way scramble of a password. You can check a password against it, but never turn it back.</dd>
+          </div>
+          <div class="term">
+            <dt>access token</dt>
+            <dd>The short-lived JWT (30 minutes here) you send with requests to prove who you are.</dd>
+          </div>
+          <div class="term">
+            <dt>refresh token</dt>
+            <dd>A longer-lived token (7 days here) used to get a new access token without logging in again.</dd>
+          </div>
+          <div class="term">
+            <dt>role</dt>
+            <dd>A label on a user, like <code>admin</code> or <code>premium</code>, that routes can require.</dd>
+          </div>
+          <div class="term">
+            <dt>cookie</dt>
+            <dd>A small piece of data your browser stores and sends automatically. FastAuth can keep your token in one.</dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- Next steps -->
+      <section class="tut-next" style="margin-top:3rem">
+        <h2>Where to next?</h2>
+        <p>
+          You now have more auth than most class projects ever need. When
+          it's time to put your project online, one flag turns on the safety
+          rails: <code>FastAuth(engine=engine, production=True)</code>. The
+          full documentation has the complete
+          <a href="index.html#going-to-production">going to production</a>
+          checklist, plus roles, cookies, and custom user models.
+        </p>
+        <a class="btn btn-primary" href="index.html">Read the full docs <i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-inner">
+        <img src="FastAuth.svg" alt="FastAuth" />
+        <div class="footer-links">
+          <a href="index.html">Docs</a>
+          <a href="https://github.com/hu55ain3laa/fastauth">GitHub</a>
+          <a href="https://pypi.org/project/fastauth-iq/">PyPI</a>
+        </div>
+        <span class="footer-copy">MIT ·
+          <a href="https://www.hu55ain3laa.site">Hussein Ghadhban</a></span>
+      </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="scripts.js"></script>
+  </body>
+</html>

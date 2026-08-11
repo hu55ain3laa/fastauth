@@ -108,6 +108,28 @@ class UserExistsException(FastAuthException):
         )
 
 
+class EmailNotVerifiedException(FastAuthException):
+    """Exception raised when a route requires a verified email address."""
+
+    def __init__(self, detail: str = "Email address not verified"):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=detail,
+            error_code="FASTAUTH_EMAIL_NOT_VERIFIED"
+        )
+
+
+class WeakPasswordException(FastAuthException):
+    """Exception raised when a password does not meet the minimum requirements."""
+
+    def __init__(self, detail: str = "Password does not meet the minimum requirements"):
+        super().__init__(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=detail,
+            error_code="FASTAUTH_WEAK_PASSWORD"
+        )
+
+
 # Role Exceptions
 class RoleNotFoundException(FastAuthException):
     """Exception raised when role is not found."""

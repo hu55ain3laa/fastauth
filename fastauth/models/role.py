@@ -1,16 +1,15 @@
-from typing import List, Optional, Any
-from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional
+
+from sqlmodel import Field, SQLModel
 
 
 class Role(SQLModel, table=True):
     """Role model for role-based authorization."""
     __tablename__ = "role"
-    
-    id: int = Field(primary_key=True)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
     name: str = Field(unique=True, index=True)
     description: Optional[str] = None
-    
-    # The relationship with users is handled by the backref in the User model
 
 
 class RoleCreate(SQLModel):
@@ -24,9 +23,6 @@ class RoleRead(SQLModel):
     id: int
     name: str
     description: Optional[str] = None
-    
-    class Config:
-        from_attributes = True
 
 
 class RoleUpdate(SQLModel):

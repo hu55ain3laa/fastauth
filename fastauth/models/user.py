@@ -1,12 +1,15 @@
-from typing import Optional, List, Any
-from pydantic import BaseModel
-from sqlmodel import SQLModel, Field, Relationship
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict
+from sqlmodel import Field, SQLModel
+
+from fastauth.models.role import RoleRead
 
 
 class UserRole(SQLModel, table=True):
     """Association table for many-to-many relationship between users and roles."""
     __tablename__ = "user_role"
-    
+
     user_id: Optional[int] = Field(default=None, foreign_key="user.id", primary_key=True)
     role_id: Optional[int] = Field(default=None, foreign_key="role.id", primary_key=True)
 
@@ -14,31 +17,31 @@ class UserRole(SQLModel, table=True):
 class User(SQLModel, table=True):
     """Base user model for database operations."""
     __tablename__ = "user"
-    
-    id: int = Field(primary_key=True)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True, index=True)
     email: str = Field(unique=True)
     hashed_password: str
     disabled: bool = Field(default=False)
+    email_verified: bool = Field(default=False)
+    # Bumped to invalidate all previously issued tokens ("logout everywhere")
+    token_version: int = Field(default=0)
 
 
 class UserRead(BaseModel):
     """Pydantic model for user data that can be exposed to clients."""
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     username: str
     email: str
     disabled: bool
-    
-    class Config:
-        from_attributes = True
+    email_verified: bool = False
 
 
 class UserReadWithRoles(UserRead):
     """Pydantic model for user data including roles."""
-    roles: List[Any] = []
-    
-    class Config:
-        from_attributes = True
+    roles: List[RoleRead] = []
 
 
 class UserCreate(BaseModel):
@@ -64,20 +67,3 @@ class UserLogin(BaseModel):
     """Pydantic model for user login requests."""
     username: str
     password: str
-
-
-class UserLogout(BaseModel):
-    """Pydantic model for user logout requests."""
-    username: str
-
-
-class UserEnable(BaseModel):
-    """Pydantic model for enabling a user."""
-    username: str
-    disabled: bool = False
-
-
-class UserDisable(BaseModel):
-    """Pydantic model for disabling a user."""
-    username: str
-    disabled: bool = True

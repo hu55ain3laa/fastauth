@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastauth_iq"
+version = "0.6.0"
+description = "A comprehensive authentication and authorization library for FastAPI with JWT, cookie support, role-based access control, and automatic database initialization"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Hussein Ghadhban", email = "ala.1995@yahoo.com" },
+]
+keywords = [
+    "fastapi",
+    "authentication",
+    "authorization",
+    "rbac",
+    "role-based",
+    "jwt",
+    "oauth2",
+    "sqlmodel",
+    "token",
+    "cli",
+    "database-initialization",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Framework :: FastAPI",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Internet :: WWW/HTTP :: Session",
+]
+dependencies = [
+    "fastapi>=0.104.0",
+    "sqlmodel>=0.0.14",
+    "pydantic>=2.5",
+    "bcrypt>=4.0",
+    "pyjwt>=2.6.0",
+    "python-multipart>=0.0.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "httpx>=0.24",
+]
+
+[project.scripts]
+fastauth = "fastauth.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/hu55ain3laa/fastauth"
+Documentation = "https://hu55ain3laa.github.io/fastauth/"
+Source = "https://github.com/hu55ain3laa/fastauth"
+"Bug Reports" = "https://github.com/hu55ain3laa/fastauth/issues"
+
+[tool.setuptools.packages.find]
+include = ["fastauth*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
