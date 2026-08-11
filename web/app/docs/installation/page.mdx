@@ -1,0 +1,64 @@
+export const metadata = {
+  title: "Installation",
+  description:
+    "Install FastAuth with uv or pip, from PyPI or from source. Requires Python 3.10 or newer.",
+  alternates: { canonical: "/docs/installation" },
+};
+
+<Eyebrow>Start</Eyebrow>
+
+# Installation
+
+<Lede>
+  One dependency, plus FastAPI's standard extras for the development server.
+</Lede>
+
+<Tabs labels={["uv", "pip", "poetry"]}>
+
+```bash:shell
+uv add fastauth_iq "fastapi[standard]"
+```
+
+```bash:shell
+pip install fastauth_iq "fastapi[standard]"
+```
+
+```bash:shell
+poetry add fastauth_iq "fastapi[standard]"
+```
+
+</Tabs>
+
+Or install from source:
+
+```bash:shell
+git clone https://github.com/hu55ain3laa/fastauth.git
+cd fastauth
+uv pip install -e .
+```
+
+Requires Python 3.10 or newer. `fastapi[standard]` brings the `fastapi dev`
+server used throughout these docs.
+
+## Installing uv
+
+Don't have `uv` yet? Grab it with your platform's package manager, or see the
+[uv installation guide](https://docs.astral.sh/uv/getting-started/installation/):
+
+```bash:shell
+# macOS
+brew install uv
+
+# Windows
+winget install --id=astral-sh.uv -e
+
+# Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# or as a snap
+sudo snap install astral-uv --classic
+```
+
+<Callout variant="note">
+  Prefer pip? `pip install fastauth_iq "fastapi[standard]"` works the same way.
+  The docs use `uv` because it resolves and installs considerably faster.
+</Callout>

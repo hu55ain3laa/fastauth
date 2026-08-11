@@ -1,0 +1,64 @@
+export const metadata = {
+  title: "Customization",
+  description:
+    "FastAuth from zero config to ultra custom: constructor options, your own models and routers, and composing the primitives directly.",
+  alternates: { canonical: "/docs/customization" },
+};
+
+<Eyebrow>Guide</Eyebrow>
+
+# From zero config to ultra custom
+
+<Lede>
+  Every knob is optional. Start with nothing, turn dials as your project grows,
+  and drop down to the primitives when you need full control.
+</Lede>
+
+## Level 0 · Zero config
+
+Two lines. FastAuth manages a development secret for you (stored in
+`.fastauth-secret`, add it to `.gitignore`) and cookies work on localhost out of
+the box.
+
+```python:main.py
+auth = FastAuth(engine=engine)
+auth.setup(app)
+```
+
+## Level 1 · Small tweaks
+
+Adjust behavior with constructor options. Each has a safe default, so change
+only what you care about:
+
+```python:main.py
+auth = FastAuth(
+    engine=engine,
+    access_token_expires_in=15,   # minutes a login lasts
+    refresh_token_expires_in=30,  # days before re-login is needed
+    password_min_length=12,       # stricter signup passwords (0 disables)
+    use_cookie=False,             # header-only auth (mobile/API clients)
+    cookie_samesite="strict",     # tighter cross-site cookie policy
+)
+```
+
+## Level 2 · Your models and routes
+
+Bring a custom user model, your own session dependency, or mount only the
+routers you want. See [advanced usage](/docs/advanced) for the custom model
+rules.
+
+```python:main.py
+auth = FastAuth(engine=engine, user_model=CustomUser)
+
+# Mount selectively instead of auth.setup(app)
+app.include_router(auth.get_auth_router(get_session))
+# skip the role router entirely, or:
+auth.setup(app, include_role_router=False)
+```
+
+## Level 3 · Ultra custom
+
+The building blocks are public. Compose `auth.token_manager`,
+`auth.password_manager`, `auth.authenticate_user()`, and `RoleManager` into any
+flow you want; the [custom login example](/docs/advanced) shows the pattern.
+Everything FastAuth's own routes do, your code can do too.

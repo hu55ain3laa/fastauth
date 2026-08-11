@@ -1,0 +1,300 @@
+export const metadata = {
+  title: "How auth works",
+  description:
+    "Plain-language explanations of the ideas behind FastAuth: password hashing, tokens, what a JWT actually contains, what a cookie is, and the difference between authentication and authorization.",
+  alternates: { canonical: "/docs/concepts" },
+};
+
+<Eyebrow>Start</Eyebrow>
+
+# How authentication works
+
+<Lede>
+  Every term on this page shows up somewhere in FastAuth's API. If any of them
+  have ever been words you nodded along to without being sure about, start
+  here. Nothing below assumes prior knowledge.
+</Lede>
+
+## The problem being solved
+
+HTTP has no memory. Each request your server receives arrives with no built-in
+knowledge of who sent it. If a user logs in and then clicks a link, that second
+request knows nothing about the first.
+
+So every authentication system has to answer two questions, and they are
+genuinely different questions:
+
+- **Authentication** ("authn"): who are you? Proving identity.
+- **Authorization** ("authz"): what are you allowed to do? Checking permission.
+
+Logging in is authentication. Being refused from the admin page is
+authorization. FastAuth handles both, and it is worth keeping them separate in
+your head because they fail differently: a bad password is a `401`, a
+forbidden page is a `403`.
+
+## Passwords and hashing
+
+You must never store the password a user typed. If your database leaks, every
+stored password is immediately usable, on your site and on every other site
+where that person reused it.
+
+Instead you store a **hash**: the output of a one-way function. Feed it
+`hunter2` and you get a long scramble. Feed it `hunter2` again and you get the
+same scramble. But there is no way to run the function backwards and recover
+`hunter2` from the scramble.
+
+That is enough to check a login. When someone submits a password you hash what
+they typed and compare the two hashes. You never need the original.
+
+FastAuth uses **bcrypt**, which adds two things a plain hash lacks:
+
+- **A salt**: random data mixed into each hash, so two users with the same
+  password get different hashes. Without it an attacker could hash a list of
+  common passwords once and match them against your whole database at a glance.
+- **Deliberate slowness**: bcrypt is designed to be expensive to compute. A
+  delay you cannot perceive on login becomes crippling for an attacker trying
+  billions of guesses.
+
+<Callout variant="note">
+  You do not call any of this yourself. `POST /users` hashes on the way in and
+  `POST /token` compares on the way back. It is described here so the
+  `hashed_password` column on your user model is not a mystery.
+</Callout>
+
+## Staying logged in: sessions and tokens
+
+Once someone proves who they are, the server needs a way to recognise them on
+the next request. There are two classic approaches.
+
+**Server-side sessions.** The server stores "session `abc123` is Hussein" in
+memory or a database, and gives the browser the ID `abc123`. Every request
+sends the ID back and the server looks it up. Simple, and revoking a session is
+just deleting a row. The cost is that every request hits that lookup, and every
+server needs access to the same session store.
+
+**Tokens.** The server hands out a signed note that says "this is Hussein, it
+expires at 4pm" and keeps nothing. Later requests present the note. The server
+checks the signature is genuine, reads it, and trusts it. No lookup, nothing
+stored.
+
+FastAuth uses tokens, specifically JWTs.
+
+## What a JWT actually is
+
+A JSON Web Token is three chunks of text joined by dots. Hover any segment
+below to see which part of the decoded token it produces:
+
+<JwtDecoder />
+
+Reading left to right:
+
+1. **Header**: which algorithm signed this. FastAuth uses **HS256**, meaning
+   the signature is a SHA-256 hash of the token combined with your secret key.
+   The "H" is for HMAC, the standard construction for proving a message came
+   from someone holding a shared secret.
+2. **Payload**: the actual **claims**, which is simply the word for the
+   statements a token makes about its bearer. `sub` is the subject (the
+   username), `token_type` distinguishes access from refresh, and `exp` is the
+   expiry as a **Unix timestamp** — seconds elapsed since 1 January 1970, the
+   way computers usually pass dates around.
+3. **Signature**: proof the first two parts have not been altered, produced
+   from them plus your `secret_key`.
+
+Here is the part that surprises people, and it matters:
+
+<Callout variant="warning">
+  A JWT is **signed, not encrypted**. Those first two segments are ordinary
+  base64 — anyone holding the token can decode and read every claim, no secret
+  required. Paste one into [jwt.io](https://jwt.io) and see for yourself. Never
+  put anything private in a token payload.
+</Callout>
+
+So what does the signature buy you, if the contents are public? It makes the
+token **unforgeable**. Change a single character of the payload, say editing
+`"sub": "hussein"` to `"sub": "admin"`, and the signature no longer matches.
+Producing a signature that does match requires your `secret_key`. That is why a
+strong, secret `secret_key` is the one thing you cannot get wrong: it is the
+only thing standing between a user and writing their own credentials.
+
+This also explains why tokens expire. Since the server stores nothing, it
+cannot "cancel" a token that is already out in the world. The expiry claim is
+what limits the damage of a stolen one.
+
+## Access tokens and refresh tokens
+
+That expiry creates a tension. Short-lived tokens are safer, but forcing a
+login every fifteen minutes is miserable. Two tokens resolve it:
+
+- The **access token** is short-lived (30 minutes by default) and accompanies
+  every API call. If one is stolen it is useless before long.
+- The **refresh token** lives much longer (7 days by default) and does exactly
+  one thing: it can be exchanged at `POST /token/refresh` for a fresh access
+  token.
+
+The access token travels constantly and so has many chances to leak, but is
+short-lived. The refresh token is long-lived but is sent rarely, only when
+renewing. Each token's risk is offset by its other property.
+
+## What a cookie is
+
+A cookie is a small piece of text the server asks the browser to keep, and the
+browser then attaches to every subsequent request to that site, automatically,
+with no JavaScript involved.
+
+The server sends a response header:
+
+```text:response headers
+Set-Cookie: access_token=eyJhbGci...; HttpOnly; Secure; SameSite=lax; Max-Age=1800
+```
+
+From then on the browser includes `Cookie: access_token=eyJhbGci...` on every
+request to your domain until it expires. That automatic part is the whole
+appeal: a browser app does not need to store the token, remember to attach it,
+or manage it at all.
+
+Everything after the value is a **flag**, an instruction to the browser about
+how to handle the cookie:
+
+- **HttpOnly** — JavaScript on the page cannot read this cookie. `document.cookie`
+  simply will not show it. This is the defence against **XSS** (cross-site
+  scripting), where an attacker gets their script running on your page, perhaps
+  through an unescaped comment field. Such a script can read anything in
+  `localStorage`, which is exactly why storing tokens there is risky. It cannot
+  read an HttpOnly cookie. FastAuth always sets this.
+- **Secure** — send this cookie only over HTTPS. Without it, a single request
+  over plain `http://` transmits the token in the clear, readable by anyone
+  sharing the network. On by default in [production mode](/docs/production).
+- **SameSite** — controls whether *other* sites can cause your browser to send
+  this cookie. This is the defence against **CSRF** (cross-site request
+  forgery): without it, a page at `evil.com` could submit a hidden form to your
+  API and the browser would helpfully attach the user's cookie. `lax`, the
+  default, sends the cookie on normal navigation to your site but not on
+  cross-site form posts. `strict` never sends it cross-site at all.
+- **Max-Age** — how many seconds until the browser discards it. FastAuth sets
+  this to match the access token's own expiry, so a cookie never outlives the
+  token inside it.
+
+## Header or cookie?
+
+The alternative to a cookie is sending the token yourself, in a request header:
+
+```text:request headers
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+`Authorization` is the standard HTTP header for credentials, and **Bearer** is
+the scheme name. It means precisely what it sounds like: whoever bears this
+token is treated as its owner, no further questions. There is no accompanying
+proof of identity, which is exactly why a leaked token is as good as a stolen
+password, and why they are kept short-lived.
+
+Both approaches carry the same token; they differ in who does the carrying.
+
+| | Authorization header | Cookie |
+| --- | --- | --- |
+| Attached by | your client code, explicitly | the browser, automatically |
+| Readable by JavaScript | yes, you hold it | no, when HttpOnly |
+| Vulnerable to XSS theft | yes, if stored in `localStorage` | no |
+| Vulnerable to CSRF | no | mitigated by SameSite |
+| Suits | mobile apps, scripts, service-to-service | browser apps |
+
+FastAuth supports both at once. A protected route checks the
+`Authorization: Bearer` header first and falls back to the cookie, so one
+backend serves a web frontend and a mobile app without configuration.
+
+## Roles
+
+Authorization needs a model, and the common one is **role-based access
+control** (RBAC). Rather than recording each individual permission against each
+user, you attach named roles to users, and routes require roles.
+
+The indirection is what pays off. When you decide moderators may also delete
+comments, you change the rule in one place instead of editing every moderator's
+permission list. FastAuth ships six roles to start from and lets you add your
+own.
+
+## The FastAPI and SQLModel pieces
+
+FastAuth is a library for FastAuth-shaped problems, not a FastAPI tutorial, but
+four things from the surrounding libraries appear in nearly every example here.
+If they are unfamiliar, this is enough to read the rest.
+
+**`Depends(...)`** is FastAPI's dependency injection. Writing
+`user: User = Depends(auth.current_user)` tells FastAPI: before running this
+function, call `auth.current_user`, and pass whatever it returns as the `user`
+argument. If that dependency raises instead, your function is never reached and
+the error becomes the response. That is the whole mechanism behind protecting a
+route — the check runs before your code, not inside it.
+
+**`engine`** is SQLModel's connection to your database, created once at startup
+with `create_engine("sqlite:///./app.db")`. It holds the connection pool. You
+give the same engine to FastAuth so it uses your database rather than one of
+its own.
+
+**`Session`** is a single conversation with the database, opened per request and
+closed at the end. The `get_session` function in these examples is a dependency
+that opens one, hands it over with `yield`, and closes it afterwards even if the
+route raised.
+
+**`lifespan`** is FastAPI's startup and shutdown hook. Code before the `yield`
+runs once as the app boots, which is where table creation belongs, and code
+after runs on shutdown.
+
+<Callout variant="learn">
+  FastAPI's own [dependency injection
+  guide](https://fastapi.tiangolo.com/tutorial/dependencies/) covers `Depends`
+  properly if you want the full picture. Nothing FastAuth does with it is
+  unusual.
+</Callout>
+
+## Where this lands in FastAuth
+
+| Idea | In the API |
+| --- | --- |
+| Hashing | Automatic on `POST /users` |
+| Logging in | `POST /token` |
+| Access token | Returned by `/token`, sent on each request |
+| Refresh token | `POST /token/refresh` |
+| Cookie flags | `use_cookie`, `cookie_secure`, `cookie_samesite` |
+| Signing key | `secret_key` |
+| Authentication check | `auth.current_user` |
+| Authorization check | `auth.roles(...)`, `auth.admin` |
+
+With the vocabulary in place, [Authentication](/docs/authentication) covers how
+to configure each of these, and the [quick start](/docs/quick-start) puts them
+together into a working app.
+
+## Glossary
+
+Every term used across these docs, in one place.
+
+| Term | Meaning |
+| --- | --- |
+| **access token** | Short-lived JWT (30 min default) sent with each request to prove who you are |
+| **authentication** (authn) | Proving who you are. Failing gives `401` |
+| **authorization** (authz) | Deciding what you may do. Failing gives `403` |
+| **base64** | A way of writing binary data using ordinary letters and digits. Encoding, not encryption: trivially reversible by anyone |
+| **bcrypt** | The password hashing algorithm FastAuth uses, deliberately slow and salted |
+| **Bearer** | The `Authorization` header scheme meaning "whoever holds this token is its owner" |
+| **claim** | One statement inside a token's payload, such as `sub` or `exp` |
+| **cookie** | Text the server asks the browser to store and resend automatically on every later request |
+| **CSRF** | Cross-site request forgery: another site causing your browser to send an authenticated request. Blocked by `SameSite` |
+| **hash** | A one-way scramble. You can verify a password against it, never recover the password from it |
+| **HS256** | HMAC with SHA-256, the signing algorithm FastAuth uses |
+| **HttpOnly** | Cookie flag hiding it from JavaScript, so XSS cannot steal it |
+| **idempotent** | Safe to run repeatedly: doing it twice leaves the same result as doing it once |
+| **JWT** | JSON Web Token. Header, payload, and signature, joined by dots. Signed, not encrypted |
+| **many-to-many** | A relationship where each row on both sides can link to many on the other, joined through a third table. Users and roles are one |
+| **rate limiting** | Capping how often a client may call an endpoint, to slow brute-force guessing |
+| **RBAC** | Role-based access control: users hold roles, routes require roles |
+| **refresh token** | Long-lived JWT (7 days default) whose only job is obtaining new access tokens |
+| **reverse proxy** | A server sitting in front of your app handling TLS, caching, and rate limiting. Nginx, Caddy, or your host's load balancer |
+| **salt** | Random data mixed into each hash so identical passwords produce different hashes |
+| **SameSite** | Cookie flag controlling whether other sites can trigger sending it |
+| **Secure** | Cookie flag restricting it to HTTPS |
+| **secret key** | The value that signs your tokens. Anyone holding it can forge any token |
+| **session** (database) | One conversation with the database, opened per request |
+| **session** (auth) | A user's logged-in state. With tokens there is no stored session, only unexpired tokens |
+| **Unix timestamp** | Seconds since 1 January 1970, how `exp` records expiry |
+| **user enumeration** | Learning which addresses have accounts by comparing responses. Why `/password/forgot` always returns 200 |
+| **XSS** | Cross-site scripting: attacker JavaScript running on your page. Blocked from tokens by `HttpOnly` |

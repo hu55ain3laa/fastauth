@@ -1,0 +1,119 @@
+export const metadata = {
+  title: "Roles",
+  description:
+    "Role-based access control in FastAuth: what RBAC is, the six standard roles, requiring roles on routes, and the role management API.",
+  alternates: { canonical: "/docs/roles" },
+};
+
+<Eyebrow>Guide</Eyebrow>
+
+# Role-based authorization
+
+<Lede>
+  Require any role, all roles, or admin. Protect a single route or a whole
+  router.
+</Lede>
+
+## What role-based access control means
+
+Authentication tells you *who* someone is. Authorization decides *what they may
+do*, and it needs a model.
+
+The naive approach is to record permissions directly against each user:
+Hussein may delete comments, Sara may delete comments, and so on. It works
+until the day you decide moderators may also hide threads, and you find
+yourself editing every moderator's permission list by hand, hoping you found
+them all.
+
+**Role-based access control** adds one layer of indirection. Users hold named
+roles; routes require roles. The rule about what a moderator can do lives in
+exactly one place, so changing it changes it everywhere. This is the model
+FastAuth implements.
+
+In the database this is a **many-to-many** relationship — each user can hold
+many roles, and each role can belong to many users — so it needs a third table
+to record the pairings. FastAuth creates a `role` table and a `userrolelink`
+table holding one row per role a user has. Roles are ordinary rows, so you can
+add your own at runtime.
+
+## Standard roles
+
+Initialization creates six roles to start from. Nothing is special about them
+beyond `admin` and `superadmin` being what `auth.admin` accepts; they are
+ordinary rows you can delete or extend.
+
+| Role | Meaning |
+| --- | --- |
+| `superadmin` | Super administrator with all privileges |
+| `admin` | Administrator with management privileges |
+| `moderator` | Content moderation privileges |
+| `premium` | Premium tier user |
+| `verified` | Verified user |
+| `user` | Standard user with basic privileges |
+
+## Requiring roles on a route
+
+Three checks cover nearly everything:
+
+```python:main.py
+# Any of these roles (OR) — staff means admins or moderators
+@app.get("/staff")
+def staff_route(user: User = Depends(auth.roles("admin", "moderator"))):
+    return {"message": "Staff area"}
+
+# All of these roles (AND) — must be premium *and* verified
+@app.get("/premium-verified")
+def premium_route(user: User = Depends(auth.all_roles("premium", "verified"))):
+    return {"message": "Premium and verified area"}
+
+# Admin shortcut — accepts admin or superadmin
+@app.get("/admin-only")
+def admin_route(user: User = Depends(auth.admin)):
+    return {"message": "Admin only area"}
+```
+
+Both `auth.roles(...)` and `auth.all_roles(...)` accept names directly or as a
+list, whichever reads better where you are.
+
+<Callout variant="warning">
+  Older code may use `auth.require_roles([...])`, `auth.require_all_roles([...])`,
+  or `auth.is_admin()`. Those still work but are deprecated and will be removed
+  in 1.0. See [versioning](/docs/versioning) for the migration table.
+</Callout>
+
+Each of these authenticates first and then authorizes, so the failures are
+distinct and your client can tell them apart:
+
+- Not signed in, or a bad token, gives `401` with `FASTAUTH_INVALID_CREDENTIALS`
+- Signed in but missing the role gives `403` with `FASTAUTH_PERMISSION_DENIED`
+
+That distinction is worth honouring in a UI: a `401` means send them to the
+login page, while a `403` means they are logged in fine and the login page will
+only confuse them.
+
+<Callout variant="note">
+  Roles are read from the database on each check, not from the token. Granting
+  or revoking a role takes effect on the user's very next request, with no need
+  to log out or refresh.
+</Callout>
+
+## Role management API
+
+`auth.setup(app)` also mounts a complete role management API under `/roles`:
+creating and editing roles, assigning them to users, and listing a user's
+roles. See the [endpoint reference](/docs/endpoints#role-management) for the
+full list.
+
+```python:example.py
+# Assign the "premium" role (id 4) to user 12
+# POST /roles/assign/12/4    (requires an admin token)
+
+# List what a user holds, to drive your UI
+# GET /roles/user/12
+```
+
+<Callout variant="note">
+  Every write route under `/roles` requires an admin role. Reads are open to any
+  authenticated user, so a client can render a UI based on what a user actually
+  holds.
+</Callout>

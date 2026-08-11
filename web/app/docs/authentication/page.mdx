@@ -1,0 +1,191 @@
+export const metadata = {
+  title: "Authentication",
+  description:
+    "How FastAuth issues access and refresh tokens, how to protect routes, and how cookie-based authentication works, including what each cookie flag does and why.",
+  alternates: { canonical: "/docs/authentication" },
+};
+
+<Eyebrow>Guide</Eyebrow>
+
+# Authentication
+
+<Lede>
+  Two tokens, one dependency to protect a route, and an optional HTTP-only
+  cookie for browser clients.
+</Lede>
+
+<Callout variant="learn">
+  New to tokens and cookies? [How auth works](/docs/concepts) explains hashing,
+  JWTs, and cookies from scratch. This page assumes you know roughly what they
+  are and focuses on configuring them.
+</Callout>
+
+## Login and token management
+
+FastAuth issues two JWTs: a short-lived **access token** (default 30 minutes)
+for regular API calls, and a long-lived **refresh token** (default 7 days) for
+getting new access tokens without re-entering credentials.
+
+The reason for two is that a token, once issued, cannot be recalled — the
+server keeps no record of it. Expiry is the only thing limiting the damage of a
+stolen one. A short access token keeps that window small; a long refresh token
+keeps users from logging in every half hour. The access token is exposed often
+but is short-lived, and the refresh token is long-lived but rarely transmitted.
+
+The whole cycle, end to end:
+
+<TokenFlowDiagram />
+
+In words:
+
+1. The client submits credentials to `POST /token`
+2. The server returns access + refresh tokens (and sets the cookie, if enabled)
+3. The client authenticates requests with the token, by header or cookie
+4. When the access token expires, the client sends `{"refresh_token": "..."}` to `POST /token/refresh`
+5. `POST /logout` clears the auth cookie
+
+Tuning the lifetimes is a security decision, not a performance one:
+
+```python:main.py
+auth = FastAuth(
+    engine=engine,
+    access_token_expires_in=15,   # minutes; shorter = smaller theft window
+    refresh_token_expires_in=30,  # days; longer = fewer logins
+)
+```
+
+<Callout variant="note">
+  Disabled users cannot log in, refresh tokens, or reach protected routes. The
+  `disabled` flag is checked at every step, so flipping it to `True` locks an
+  account out immediately without deleting anything.
+</Callout>
+
+### Revoking tokens
+
+Since tokens are not stored, "logging out everywhere" cannot mean deleting
+them. FastAuth keeps a `token_version` number on each user and stamps it into
+every token it issues. If the two ever disagree, the token is rejected.
+
+Incrementing that number therefore invalidates every token ever issued to that
+user, at once. `POST /logout/all` does exactly this, and a password change does
+it automatically, so changing a password really does kick out whoever was using
+the old one.
+
+## Protected routes
+
+Protect any route by depending on the current user:
+
+```python:main.py
+@app.get("/protected")
+def protected_route(user: User = Depends(auth.current_user)):
+    return {"message": "Protected content", "user": user.username}
+```
+
+The dependency does the whole check: it finds the token (header or cookie),
+verifies the signature against your `secret_key`, confirms it has not expired,
+confirms it is an access token rather than a refresh token, loads the user, and
+rejects disabled accounts. If any step fails your function is never called and
+the client gets a `401`. If it succeeds, `user` is a real user row.
+
+To protect a group of routes, put the dependency on the router instead of
+repeating it:
+
+```python:main.py
+from fastapi import APIRouter
+
+# Every route on this router now requires a signed-in, active user
+staff_area = APIRouter(dependencies=[auth.required])
+
+@staff_area.get("/reports")
+def reports():
+    return {"reports": [...]}
+
+app.include_router(staff_area)
+```
+
+<Callout variant="warning">
+  Older code may use `auth.get_current_active_user_dependency()`. It performs
+  the same check but is deprecated and will be removed in 1.0 — use
+  `auth.current_user`. See [versioning](/docs/versioning).
+</Callout>
+
+## Cookie-based authentication
+
+### What a cookie is
+
+A cookie is a small piece of text your server asks the browser to store, which
+the browser then attaches to every following request to your site
+automatically. No JavaScript, no client code, nothing to remember.
+
+FastAuth's login response includes a header like this:
+
+```text:response headers
+Set-Cookie: access_token=eyJhbGci...; HttpOnly; Secure; SameSite=lax; Max-Age=1800
+```
+
+From that point the browser sends `Cookie: access_token=eyJhbGci...` on every
+request to your domain until it expires. For a web frontend that is the entire
+appeal: the token handling disappears.
+
+With `use_cookie=True`, `/token` sets that cookie, and protected routes accept
+an explicit `Authorization: Bearer` header first, falling back to the cookie.
+(`Authorization` is the standard HTTP header for credentials; **Bearer** is the
+scheme name, meaning whoever holds this token is treated as its owner.) One
+backend can therefore serve a browser app and a mobile app with no extra work.
+
+```python:main.py
+auth = FastAuth(
+    # ... other parameters ...
+    use_cookie=True,        # enable cookie support
+    cookie_secure=True,     # only send over HTTPS (False for local dev)
+    cookie_samesite="lax",  # SameSite policy
+)
+```
+
+<Callout variant="note">
+  You don't need to configure anything for local development: `cookie_secure`
+  defaults to `False` in dev so cookies work on `http://localhost`, and to
+  `True` in [production mode](/docs/production) so they only travel over HTTPS.
+</Callout>
+
+### What each cookie flag means
+
+Everything after the value in that header is a flag: an instruction to the
+browser about how to treat the cookie. Each one closes a specific attack.
+
+- **HttpOnly** — JavaScript on your page cannot read this cookie;
+  `document.cookie` will not reveal it. This blocks **XSS** (cross-site
+  scripting) token theft, where an attacker gets a script running on your page
+  — through an unescaped comment or a compromised dependency — and reads
+  whatever it can reach. Such a script can read `localStorage` freely, which is
+  precisely why keeping tokens there is risky. FastAuth always sets HttpOnly.
+
+- **Secure** — the browser sends this cookie only over HTTPS. Without it, one
+  request over plain `http://` puts the token on the wire in readable form for
+  anyone on that network. On by default in production mode.
+
+- **SameSite** — controls whether *other* websites can cause the browser to
+  send this cookie. This blocks **CSRF** (cross-site request forgery): a page
+  on `evil.com` submitting a hidden form to your API, with the browser
+  helpfully attaching the user's cookie. `lax` (the default) sends the cookie
+  when someone navigates to your site normally, but not on cross-site form
+  posts. `strict` never sends it cross-site, which is safer but means following
+  a link from another site lands the user logged out.
+
+- **Max-Age** — seconds until the browser discards it. FastAuth sets this to
+  the access token's own lifetime, so a cookie never outlives the token it
+  carries.
+
+### Which should you use?
+
+| | Authorization header | Cookie |
+| --- | --- | --- |
+| Attached by | your client code, explicitly | the browser, automatically |
+| Readable by JavaScript | yes, you hold it | no, when HttpOnly |
+| Exposed to XSS theft | yes, if kept in `localStorage` | no |
+| Exposed to CSRF | no | mitigated by SameSite |
+| Best for | mobile apps, scripts, service-to-service | browser apps |
+
+For a browser frontend, prefer the cookie. For anything else, use the header.
+Leaving `use_cookie=True` costs a native client nothing, since it can simply
+ignore the cookie and send the header.

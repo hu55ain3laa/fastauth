@@ -71,19 +71,19 @@ class TestFastAuth(unittest.TestCase):
             return {"message": "This is an unprotected route"}
 
         @cls.app.get("/protected")
-        def protected(user=Depends(cls.auth.get_current_active_user_dependency())):
+        def protected(user=Depends(cls.auth.current_user)):
             return {"message": "This is a protected route", "user": user.username}
 
         @cls.app.get("/admin-only")
-        def admin_only(user=Depends(cls.auth.is_admin())):
+        def admin_only(user=Depends(cls.auth.admin)):
             return {"message": "This is an admin-only route", "user": user.username}
 
         @cls.app.get("/any-role")
-        def any_role(user=Depends(cls.auth.require_roles(["admin", "premium"]))):
+        def any_role(user=Depends(cls.auth.roles("admin", "premium"))):
             return {"message": "This requires admin OR premium role", "user": user.username}
 
         @cls.app.get("/all-roles")
-        def all_roles(user=Depends(cls.auth.require_all_roles(["premium", "verified"]))):
+        def all_roles(user=Depends(cls.auth.all_roles("premium", "verified"))):
             return {"message": "This requires premium AND verified roles", "user": user.username}
 
         # Routes for exercising the error handling system

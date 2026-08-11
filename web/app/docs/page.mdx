@@ -1,0 +1,43 @@
+export const metadata = {
+  title: "Documentation",
+  description:
+    "FastAuth documentation: installation, quick start, authentication, roles, account flows, production hardening, and the full endpoint reference.",
+  alternates: { canonical: "/docs" },
+};
+
+<Eyebrow>Documentation</Eyebrow>
+
+# FastAuth
+
+<Lede>
+  FastAuth adds JWT access and refresh tokens, role-based access control, and
+  ready-made login routes to any FastAPI + SQLModel app. Call{" "}
+  <code>auth.setup(app)</code> and start protecting routes.
+</Lede>
+
+Every FastAPI project reaches the same fork: write authentication by hand for
+the fifth time, or bolt on something that assumes it owns your database.
+FastAuth takes a third path. It works with the engine and the user model you
+already have, mounts the routes you were going to write anyway, and leaves the
+rest of your app alone.
+
+## What you get in one call
+
+```python:main.py
+auth = FastAuth(engine=engine)
+auth.setup(app)
+```
+
+That single call mounts login, token refresh, registration, logout, password
+reset, password change, email verification, and a complete role management API,
+then registers error handlers so every auth failure returns the same JSON shape.
+
+<Callout variant="learn">
+  First time building auth, or FastAPI itself is new to you? Take the
+  [easy mode guide](/docs/easy-mode): one file, five minutes, every step
+  checked. If you would rather understand the ideas first, read
+  [how auth works](/docs/concepts) — hashing, tokens, and cookies explained
+  from scratch.
+</Callout>
+
+<DocIndex />

@@ -1,0 +1,107 @@
+export const metadata = {
+  title: "Database setup",
+  description:
+    "What tables FastAuth creates and what lives in them, plus how to initialize your database from the CLI or at application startup.",
+  alternates: { canonical: "/docs/database" },
+};
+
+<Eyebrow>Guide</Eyebrow>
+
+# Database setup
+
+<Lede>
+  FastAuth creates its tables, six standard roles, and a superadmin user for
+  you, from the command line or at app startup.
+</Lede>
+
+## What gets created
+
+FastAuth works with your existing SQLModel engine rather than a database of its
+own, so initialization adds a small number of tables alongside whatever you
+already have.
+
+| Table | What it holds |
+| --- | --- |
+| `user` | One row per account: username, email, `hashed_password`, `disabled`, `email_verified`, `token_version` |
+| `role` | One row per role, with a name and description |
+| `userrolelink` | The join between users and roles: one row per role a user holds |
+
+Three columns on `user` do more work than their names suggest:
+
+- **`hashed_password`** is a bcrypt hash, never a password. It includes the
+  salt, which is why the rows look like random noise even for identical
+  passwords. See [how auth works](/docs/concepts) for what that means.
+- **`disabled`** locks an account out at every step — login, refresh, and every
+  protected route — without deleting anything.
+- **`token_version`** is stamped into each issued token. Raising it invalidates
+  every token that user holds, which is how `POST /logout/all` and password
+  changes sign someone out everywhere.
+
+## CLI initialization
+
+```bash:shell
+# Point it at your app file, settings are detected automatically
+fastauth app.py
+
+# Or pass everything explicitly
+fastauth --db-url="sqlite:///./app.db" --secret-key="your-secret-key"
+
+# Choose the superadmin credentials
+fastauth app.py --username="admin" --password="secure_password"
+
+# Run individual steps
+fastauth app.py --init-db --init-roles --create-superadmin
+```
+
+The CLI looks for `DATABASE_URL` and `SECRET_KEY` in environment variables, a
+`.env` file, the app file itself, and common config files (`config.py`,
+`settings.py`, `db.py`, `database.py`, `models.py`), including imported
+`engine` objects.
+
+## Programmatic initialization
+
+Running it in the app's lifespan means a fresh checkout or a new deployment
+comes up ready, with no separate setup step to forget.
+
+```python:main.py
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    auth.initialize_db(
+        create_tables=True,           # create database tables
+        init_roles=True,              # create the six standard roles
+        create_admin=True,            # create a superadmin if none exists
+        admin_username="superadmin",
+        admin_password="admin123",    # change in production!
+    )
+    yield
+
+app = FastAPI(lifespan=lifespan)
+```
+
+Each step is **idempotent** — running it twice leaves the same result as running
+it once. Tables are only created if missing, roles are skipped if already
+present, and the superadmin is only created when no admin exists. So calling it
+on every boot is safe, and there is no need to guard it with a "first run"
+check.
+
+<Callout variant="warning">
+  Pass `admin_username` and `admin_password` explicitly during app startup.
+  Otherwise FastAuth prompts on the console and startup blocks waiting for
+  input — which, on a server with no attached terminal, looks exactly like a
+  hang.
+</Callout>
+
+## Schema changes later
+
+SQLModel's `create_all` only creates tables that do not exist. It never alters
+one that does. Add a column to your user model and it will simply not appear,
+and you will get a `no such column` error at runtime.
+
+While developing against SQLite, deleting the database file and letting it
+rebuild is the fastest fix. Once you have data worth keeping, use
+[Alembic](https://alembic.sqlalchemy.org/) migrations. The same applies to
+upgrading FastAuth itself: v0.6.0 added `email_verified` and `token_version`,
+so databases created before it need those columns added. See
+[production](/docs/production).

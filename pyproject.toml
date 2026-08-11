@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastauth_iq"
-version = "0.6.0"
+version = "0.7.0"
 description = "A comprehensive authentication and authorization library for FastAPI with JWT, cookie support, role-based access control, and automatic database initialization"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -60,7 +60,7 @@ fastauth = "fastauth.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/hu55ain3laa/fastauth"
-Documentation = "https://hu55ain3laa.github.io/fastauth/"
+Documentation = "https://fastauth.vercel.app"
 Source = "https://github.com/hu55ain3laa/fastauth"
 "Bug Reports" = "https://github.com/hu55ain3laa/fastauth/issues"
 

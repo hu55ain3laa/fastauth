@@ -5,18 +5,18 @@
 </div>
 
 <div align="center">
-  <a href="https://badge.fury.io/py/fastauth-iq"><img src="https://badge.fury.io/py/fastauth-iq.svg?v=0.6.0" alt="PyPI version"></a>
+  <a href="https://badge.fury.io/py/fastauth-iq"><img src="https://badge.fury.io/py/fastauth-iq.svg?v=0.7.0" alt="PyPI version"></a>
   <a href="https://github.com/hu55ain3laa/fastauth/actions/workflows/ci.yml"><img src="https://github.com/hu55ain3laa/fastauth/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
 
-  <h3>📖 <a href="https://hu55ain3laa.github.io/fastauth/">Full Documentation Available Here</a></h3>
+  <h3>📖 <a href="https://fastauth.vercel.app">Full Documentation Available Here</a></h3>
 </div>
 
 ## Documentation
 
-This README provides a quick overview of FastAuth. For a more complete, interactive documentation with live examples and responsive design, visit our **[GitHub Pages Documentation](https://hu55ain3laa.github.io/fastauth/)**.
+This README provides a quick overview of FastAuth. For a more complete, interactive documentation with live examples and responsive design, visit our **[full documentation site](https://fastauth.vercel.app)**.
 
-New to FastAPI or building auth for the first time? Start with the **[Easy Mode guide for students](https://hu55ain3laa.github.io/fastauth/easy-mode.html)**: one file, five minutes, every step checked.
+New to FastAPI or building auth for the first time? Start with the **[Easy Mode guide for students](https://fastauth.vercel.app/docs/easy-mode)**: one file, five minutes, every step checked.
 
 Using an AI coding assistant? This repo ships an [AGENTS.md](AGENTS.md) with the full API surface, so agents can integrate FastAuth correctly without guessing.
 
@@ -47,6 +47,8 @@ Using an AI coding assistant? This repo ships an [AGENTS.md](AGENTS.md) with the
   - [Custom User Models](#custom-user-models)
   - [Custom Authentication Logic](#custom-authentication-logic)
 - [Security Best Practices](#security-best-practices)
+- [Versioning](#versioning)
+- [What's New in 0.7.0](#whats-new-in-070)
 - [What's New in 0.6.0](#whats-new-in-060)
 - [What's New in 0.5.0](#whats-new-in-050)
 - [What's New in 0.4.0](#whats-new-in-040)
@@ -217,8 +219,9 @@ def admin_only_route(user = Depends(auth.admin)):
 from fastapi import APIRouter
 staff_area = APIRouter(dependencies=[auth.required])
 
-# The long-form names still work: auth.get_current_active_user_dependency(),
-# auth.require_roles([...]), auth.require_all_roles([...]), auth.is_admin()
+# The long-form names still work but are deprecated and will be removed in 1.0:
+# auth.get_current_active_user_dependency(), auth.require_roles([...]),
+# auth.require_all_roles([...]), auth.is_admin()
 ```
 
 ### Cookie-Based Authentication
@@ -348,17 +351,17 @@ The initialization creates these standard roles:
 ```python
 # Require any of these roles (OR condition)
 @app.get("/admin-or-moderator")
-def admin_route(user = Depends(auth.require_roles(["admin", "moderator"]))):
+def admin_route(user = Depends(auth.roles("admin", "moderator"))):
     return {"message": "Admin or moderator area"}
 
 # Require all of these roles (AND condition)
 @app.get("/premium-and-verified")
-def premium_verified_route(user = Depends(auth.require_all_roles(["premium", "verified"]))):
+def premium_verified_route(user = Depends(auth.all_roles("premium", "verified"))):
     return {"message": "Premium and verified area"}
 
 # Shortcut for admin-only routes
 @app.get("/admin-only")
-def admin_only(user = Depends(auth.is_admin())):
+def admin_only(user = Depends(auth.admin)):
     return {"message": "Admin only area"}
 ```
 
@@ -518,6 +521,95 @@ async def custom_login(
 4. **Configure appropriate token expiration times** based on your security requirements
 5. **Keep `cookie_secure=True`** in production when using cookie-based authentication
 6. **Consider implementing rate limiting** on your authentication endpoints to prevent brute force attacks
+
+## Versioning
+
+FastAuth follows [semantic versioning](https://semver.org). Each number in
+`MAJOR.MINOR.PATCH` carries a promise, so you can tell what an upgrade costs
+before running it.
+
+| Change | Bumps | You need to |
+| --- | --- | --- |
+| Bug fix, docs, internal refactor | **PATCH** `0.6.0 → 0.6.1` | Nothing |
+| New parameter, endpoint, or helper | **MINOR** `0.6.1 → 0.7.0` | Nothing, existing code keeps working |
+| Rename, removal, or changed behaviour | **MAJOR** `0.7.0 → 1.0.0` | Read the notes and migrate |
+
+**Only a major release can break your code.** Breaking means removing or
+renaming anything public, changing a default that alters behaviour, changing a
+response shape or error code, requiring a new database column, or dropping a
+Python version. Adding an optional parameter, a new endpoint, or a clearer
+error message is not breaking.
+
+FastAuth is pre-1.0, so the API is still settling: in the `0.x` series a minor
+bump is where an unavoidable break would land, and each is called out in the
+release notes. From 1.0 the rules apply strictly.
+
+### Deprecations
+
+Nothing public disappears without notice:
+
+1. A replacement ships in a minor release; the old name keeps working
+2. The old name emits a `DeprecationWarning` naming its replacement and the
+   release that will remove it
+3. Removal happens in the next major release, never sooner
+
+Deprecated in 0.7.0, removed in 1.0:
+
+| Deprecated | Replacement |
+| --- | --- |
+| `auth.get_current_active_user_dependency()` | `auth.current_user` |
+| `auth.is_admin()` | `auth.admin` |
+| `auth.require_roles([...])` | `auth.roles(...)` |
+| `auth.require_all_roles([...])` | `auth.all_roles(...)` |
+
+Python hides `DeprecationWarning` by default. To catch them during an upgrade,
+add this to your `pyproject.toml` so deprecated calls fail your tests:
+
+```toml
+[tool.pytest.ini_options]
+filterwarnings = ["error::DeprecationWarning"]
+```
+
+Version numbers describe the API, not your database. A minor release may add a
+column, and SQLModel's `create_all` will not add it to an existing table;
+release notes flag any release needing a migration.
+
+## What's New in 0.7.0
+
+**One obvious way to do each thing.** Four long-form names are superseded by
+shorter equivalents. The old names still work and now emit a
+`DeprecationWarning`; they will be removed in 1.0.
+
+| Deprecated | Replacement |
+| --- | --- |
+| `auth.get_current_active_user_dependency()` | `auth.current_user` |
+| `auth.is_admin()` | `auth.admin` |
+| `auth.require_roles([...])` | `auth.roles(...)` |
+| `auth.require_all_roles([...])` | `auth.all_roles(...)` |
+
+The replacements accept role names directly or as a list, so both
+`auth.roles("admin", "moderator")` and `auth.roles(["admin", "moderator"])`
+work. The deprecated forms now accept either shape too, rather than requiring
+a list.
+
+**Fixed: `token_url` now defaults to `/token`.** It previously defaulted to
+`token` with no leading slash, while the router registers `/token`. That value
+is what Swagger's **Authorize** button posts to, and a relative URL resolves
+against the docs path, breaking as soon as the app is mounted under a prefix. A
+missing leading slash is now added automatically, so passing `"token"` is
+corrected rather than broken.
+
+**Documented `session_getter`.** Leave it out and FastAuth opens sessions on
+the engine you gave it, which is what most apps want. Pass your own only when
+routes must share a session with the rest of your app.
+
+**A documented versioning policy.** See [Versioning](#versioning) for what each
+number means and how deprecations are announced and removed.
+
+**New documentation site**, built with Next.js and deployed on Vercel, with
+search, flow diagrams, a concepts guide that explains hashing, tokens and
+cookies from scratch, a troubleshooting page, and an `llms.txt` for AI coding
+agents. The previous static site has been removed.
 
 ## What's New in 0.6.0
 

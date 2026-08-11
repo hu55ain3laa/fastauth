@@ -25,6 +25,20 @@ from fastauth.cli import create_superadmin, initialize_roles
 from fastauth.exceptions import setup_exception_handlers
 
 
+def _deprecated(old: str, new: str) -> None:
+    """Warn that a method has been superseded, pointing at the caller.
+
+    Old names keep working; they are scheduled for removal in 1.0. See the
+    versioning policy: https://github.com/hu55ain3laa/fastauth#versioning
+    """
+    warnings.warn(
+        f"FastAuth.{old} is deprecated and will be removed in FastAuth 1.0. "
+        f"Use {new} instead.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
 class OAuth2PasswordBearerWithCookie(OAuth2):
     """OAuth2 password bearer authentication with cookie support."""
 
@@ -123,7 +137,7 @@ class FastAuth:
         engine: Optional[Engine] = None,
         algorithm: str = "HS256",
         use_cookie: bool = True,
-        token_url: str = "token",
+        token_url: str = "/token",
         access_token_expires_in: int = 30,
         refresh_token_expires_in: int = 7,
         user_model: Type[SQLModel] = User,
@@ -144,7 +158,10 @@ class FastAuth:
             engine: SQLAlchemy/SQLModel engine for database operations
             algorithm: Algorithm for JWT signing
             use_cookie: Enable cookie-based authentication
-            token_url: URL for token endpoint
+            token_url: Path of the login endpoint, as advertised to OpenAPI.
+                This is what the "Authorize" button in /docs posts to, so it
+                must match the route the auth router registers ("/token"). A
+                missing leading slash is added for you.
             access_token_expires_in: Access token expiration in minutes
             refresh_token_expires_in: Refresh token expiration in days
             user_model: User model class for database operations
@@ -214,6 +231,13 @@ class FastAuth:
         )
 
         self.password_manager = PasswordManager()
+
+        # Swagger's Authorize button posts to this URL. A relative value
+        # resolves against the docs path and breaks as soon as the app is
+        # mounted under a prefix, so normalise to an absolute path.
+        if not token_url.startswith(("/", "http://", "https://")):
+            token_url = "/" + token_url
+        self.token_url = token_url
 
         if use_cookie:
             self.oauth2_scheme = OAuth2PasswordBearerWithCookie(tokenUrl=token_url)
@@ -348,7 +372,11 @@ class FastAuth:
 
         Args:
             app: FastAPI application instance
-            session_getter: Optional dependency that yields a database session
+            session_getter: Optional. Leave it out and FastAuth opens sessions
+                on the engine you gave it, which is what most apps want. Pass
+                your own dependency only when routes must share one session
+                with the rest of your app, for example when a test overrides
+                it or a transaction spans several operations.
             include_role_router: Also mount the role management endpoints
 
         Returns:
@@ -455,11 +483,12 @@ class FastAuth:
         return self.dependencies.get_current_user()
 
     def get_current_active_user_dependency(self):
-        """Get a FastAPI dependency for active user authentication.
+        """Deprecated. Use the ``auth.current_user`` attribute instead.
 
-        Returns:
-            callable: A dependency that validates the user is active
+        .. deprecated:: 0.7.0
+            Superseded by :attr:`current_user`, removed in 1.0.
         """
+        _deprecated("get_current_active_user_dependency()", "auth.current_user")
         return self.dependencies.get_current_active_user()
 
     def get_auth_router(self, session_getter: Optional[Callable] = None):
@@ -492,33 +521,35 @@ class FastAuth:
         setup_exception_handlers(app)
 
     def require_roles(self, required_roles):
-        """Get a FastAPI dependency that requires any of the specified roles.
+        """Deprecated. Use ``auth.roles("admin", "moderator")`` instead.
 
-        Args:
-            required_roles: List of role names, any of which grants access
-
-        Returns:
-            callable: A dependency that validates if the user has a required role
+        .. deprecated:: 0.7.0
+            Superseded by :meth:`roles`, removed in 1.0. Note that
+            :meth:`roles` takes names as arguments as well as a list.
         """
-        return self.role_dependencies.require_roles(required_roles)
+        _deprecated('require_roles([...])', 'auth.roles("admin", "moderator")')
+        return self.role_dependencies.require_roles(self._role_list((required_roles,)))
 
     def require_all_roles(self, required_roles):
-        """Get a FastAPI dependency that requires all specified roles.
+        """Deprecated. Use ``auth.all_roles("premium", "verified")`` instead.
 
-        Args:
-            required_roles: List of role names, all of which are required
-
-        Returns:
-            callable: A dependency that validates if the user has all required roles
+        .. deprecated:: 0.7.0
+            Superseded by :meth:`all_roles`, removed in 1.0.
         """
-        return self.role_dependencies.require_all_roles(required_roles)
+        _deprecated(
+            'require_all_roles([...])', 'auth.all_roles("premium", "verified")'
+        )
+        return self.role_dependencies.require_all_roles(
+            self._role_list((required_roles,))
+        )
 
     def is_admin(self):
-        """Get a FastAPI dependency that requires the 'admin' role.
+        """Deprecated. Use the ``auth.admin`` attribute instead.
 
-        Returns:
-            callable: A dependency that validates if the user has admin role
+        .. deprecated:: 0.7.0
+            Superseded by :attr:`admin`, removed in 1.0.
         """
+        _deprecated("is_admin()", "auth.admin")
         return self.role_dependencies.is_admin()
 
     def get_role_manager(self):

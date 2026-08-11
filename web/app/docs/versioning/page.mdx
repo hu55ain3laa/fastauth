@@ -1,0 +1,143 @@
+export const metadata = {
+  title: "Versioning",
+  description:
+    "What each number in a FastAuth version means, what counts as a breaking change, and how deprecations are announced and removed.",
+  alternates: { canonical: "/docs/versioning" },
+};
+
+<Eyebrow>Reference</Eyebrow>
+
+# Versioning and deprecations
+
+<Lede>
+  FastAuth follows semantic versioning. Every number in a release carries a
+  promise, so you can tell what an upgrade will cost you before you run it.
+</Lede>
+
+## Reading a version number
+
+```text:version
+0.6.0
+│ │ │
+│ │ └── PATCH  fixes only. Always safe.
+│ └──── MINOR  new features, nothing removed. Safe.
+└────── MAJOR  breaking changes. Read the notes first.
+```
+
+| Change | Bumps | You need to |
+| --- | --- | --- |
+| Bug fix, docs, internal refactor | **PATCH** `0.6.0 → 0.6.1` | Nothing. Upgrade freely |
+| New parameter, endpoint, or helper | **MINOR** `0.6.1 → 0.7.0` | Nothing. Existing code keeps working |
+| Something renamed, removed, or behaving differently | **MAJOR** `0.7.0 → 1.0.0` | Read the release notes and migrate |
+
+The rule that matters: **only a major release can break your code.** If the
+first number has not changed, upgrading should be a version bump and nothing
+else.
+
+<Callout variant="note">
+  FastAuth is pre-1.0, so the API is still settling. In the `0.x` series a
+  minor bump is where breaking changes would land if they were unavoidable, and
+  each one is called out in the release notes. From 1.0 onward the rules above
+  apply strictly.
+</Callout>
+
+## What counts as breaking
+
+Breaking, and therefore major-only:
+
+- Removing or renaming anything public: a method, a parameter, an attribute
+- Changing a default in a way that alters behaviour, such as a token lifetime
+  or a cookie flag
+- Changing the shape of a response body or an error code
+- Requiring a database column that did not exist before
+- Dropping support for a Python version
+
+Not breaking, and therefore fine in a minor release:
+
+- Adding a parameter with a default that preserves today's behaviour
+- Adding a new endpoint, dependency, or exception type
+- Making an error message clearer
+- Improving performance
+- Anything internal, meaning names starting with an underscore
+
+## How deprecations work
+
+Nothing public disappears without notice. The path is always the same:
+
+1. **A replacement arrives** in a minor release. The old name keeps working.
+2. **The old name warns.** Calling it raises a `DeprecationWarning` naming the
+   replacement and the release that will remove it.
+3. **Removal happens in the next major release**, never sooner.
+
+That gives you at least one full release cycle to migrate, and the warning
+tells you exactly what to change.
+
+```python:main.py
+# Deprecated in 0.7.0, removed in 1.0
+user: User = Depends(auth.get_current_active_user_dependency())
+
+# The replacement
+user: User = Depends(auth.current_user)
+```
+
+### Seeing the warnings
+
+Python hides `DeprecationWarning` by default outside of `__main__`. To surface
+them across your whole app while you upgrade:
+
+```bash:shell
+python -W default::DeprecationWarning -m uvicorn main:app
+```
+
+Or, if you run pytest, make them impossible to miss:
+
+```toml:pyproject.toml
+[tool.pytest.ini_options]
+filterwarnings = ["error::DeprecationWarning"]
+```
+
+That turns every deprecated call into a test failure, so an upgrade tells you
+what to fix instead of going quiet until the removal lands.
+
+## Currently deprecated
+
+Superseded in 0.7.0, removed in 1.0. All four still work today.
+
+| Deprecated | Replacement |
+| --- | --- |
+| `auth.get_current_active_user_dependency()` | `auth.current_user` |
+| `auth.is_admin()` | `auth.admin` |
+| `auth.require_roles([...])` | `auth.roles(...)` |
+| `auth.require_all_roles([...])` | `auth.all_roles(...)` |
+
+The replacements are attributes or take names directly, rather than being
+methods that take a list, so they read closer to the sentence they express:
+
+```python:main.py
+@app.get("/staff")
+def staff(user: User = Depends(auth.roles("admin", "moderator"))):
+    ...
+```
+
+## Database schema changes
+
+Version numbers describe the API, not your database. A minor release can add a
+column, and SQLModel's `create_all` will not add it to a table that already
+exists.
+
+Release notes flag any release needing a schema change. v0.6.0 added
+`email_verified` and `token_version`, for instance. See
+[production](/docs/production) for handling those with Alembic.
+
+## Pinning
+
+For an application, pin a range that accepts fixes but not surprises:
+
+```toml:pyproject.toml
+dependencies = [
+    "fastauth_iq>=0.6,<0.7",
+]
+```
+
+After 1.0 the natural range widens to `>=1.0,<2.0`, since everything in the 1.x
+line is compatible by definition.

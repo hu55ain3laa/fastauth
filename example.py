@@ -66,7 +66,7 @@ async def protected_route(current_user: User = Depends(auth.current_user)):
 
 # Admin-only route
 @app.get("/admin", tags=["role-protected"])
-async def admin_route(current_user: User = Depends(auth.is_admin())):
+async def admin_route(current_user: User = Depends(auth.admin)):
     return {"message": "This is an admin-only route", "user": current_user.username}
 
 

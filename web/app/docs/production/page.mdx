@@ -1,0 +1,53 @@
+export const metadata = {
+  title: "Production",
+  description:
+    "FastAuth's production mode: the safety rails it enforces, and the checklist to work through before you deploy.",
+  alternates: { canonical: "/docs/production" },
+};
+
+<Eyebrow>Reference</Eyebrow>
+
+# Going to production
+
+<Lede>
+  Built something locally and want to ship it? One flag turns on the safety
+  rails, and FastAuth refuses to start with unsafe settings.
+</Lede>
+
+```python:main.py
+auth = FastAuth(engine=engine, production=True)
+# or set the environment variable FASTAUTH_PRODUCTION=1
+```
+
+With `production=True`, FastAuth:
+
+- **Requires a real secret key**: 32+ characters from the `SECRET_KEY`
+  environment variable; it will not invent one
+- **Sends cookies only over HTTPS**: `cookie_secure` defaults to `True`
+- **Refuses the default admin password**: creating a superadmin without an
+  explicit, non-default password is an error
+
+Need a key right now? Here is one, generated in your browser:
+
+<SecretGenerator />
+
+## Deploy checklist
+
+1. Set `SECRET_KEY` in your host's environment
+2. Turn on `production=True` (or `FASTAUTH_PRODUCTION=1`)
+3. Serve over HTTPS (your host or reverse proxy handles the certificate)
+4. Create the superadmin with a strong, unique password
+5. Swap SQLite for a server database if you expect real traffic (any
+   SQLModel/SQLAlchemy engine works: PostgreSQL, MySQL, and so on)
+6. Run with `uv run fastapi run main.py` (the production server, instead of
+   `fastapi dev`)
+
+<Callout variant="warning">
+  Changing your models later? SQLModel's `create_all` only creates missing
+  tables; for schema changes on a live database, add
+  [Alembic](https://alembic.sqlalchemy.org/) migrations. Upgrading FastAuth
+  itself works the same way: v0.6.0 added the `email_verified` and
+  `token_version` columns, so existing databases need
+  `ALTER TABLE user ADD COLUMN ...` (or an Alembic revision); dev SQLite files
+  can simply be deleted.
+</Callout>

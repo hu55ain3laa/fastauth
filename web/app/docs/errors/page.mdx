@@ -1,0 +1,79 @@
+export const metadata = {
+  title: "Error handling",
+  description:
+    "FastAuth's exceptions, their status codes and machine-readable error codes, and the single JSON response shape they all share.",
+  alternates: { canonical: "/docs/errors" },
+};
+
+<Eyebrow>Reference</Eyebrow>
+
+# Error handling
+
+<Lede>
+  Every auth failure returns the same JSON shape with a machine-readable code.
+  Clients handle errors one way.
+</Lede>
+
+## Response shape
+
+```json:response.json
+{
+  "error": {
+    "code": "FASTAUTH_INVALID_CREDENTIALS",
+    "message": "Incorrect username or password",
+    "status_code": 401
+  }
+}
+```
+
+Handlers are registered automatically by `auth.setup(app)`. If you mount routers
+manually, call `auth.setup_exception_handlers(app)` yourself.
+
+The shape matters more than it looks. FastAPI's own default is
+`{"detail": "..."}` — a human sentence and nothing else, which leaves a client
+parsing English to work out what happened. Every FastAuth failure instead
+carries a stable `code`, so a frontend can branch on it:
+
+```python:client.py
+if error["code"] == "FASTAUTH_INVALID_TOKEN":
+    refresh_and_retry()
+elif error["code"] == "FASTAUTH_EMAIL_NOT_VERIFIED":
+    show_check_your_inbox()
+```
+
+### Reading the status codes
+
+The split between `401` and `403` is the one worth getting right in a UI, and
+it is easy to conflate:
+
+- **401** means *we do not know who you are*. No token, expired token, wrong
+  password. The fix is to log in, so sending the user to the login page is
+  correct.
+- **403** means *we know exactly who you are, and no*. The account is disabled,
+  lacks a role, or has an unverified email. Logging in again changes nothing,
+  so a login page here just confuses people.
+- **409** means a conflict with something that already exists, usually a taken
+  username or email.
+- **422** means the input was understood but unacceptable, such as a password
+  below your minimum length.
+
+## Exceptions
+
+| Exception | Status | Error code |
+| --- | --- | --- |
+| `CredentialsException` | 401 | `FASTAUTH_INVALID_CREDENTIALS` |
+| `TokenException` | 401 | `FASTAUTH_INVALID_TOKEN` |
+| `RefreshTokenException` | 401 | `FASTAUTH_INVALID_REFRESH_TOKEN` |
+| `InactiveUserException` | 403 | `FASTAUTH_INACTIVE_USER` |
+| `PermissionDeniedException` | 403 | `FASTAUTH_PERMISSION_DENIED` |
+| `EmailNotVerifiedException` | 403 | `FASTAUTH_EMAIL_NOT_VERIFIED` |
+| `UserNotFoundException` | 404 | `FASTAUTH_USER_NOT_FOUND` |
+| `RoleNotFoundException` | 404 | `FASTAUTH_ROLE_NOT_FOUND` |
+| `UserExistsException` | 409 | `FASTAUTH_USER_EXISTS` |
+| `RoleExistsException` | 409 | `FASTAUTH_ROLE_EXISTS` |
+| `WeakPasswordException` | 422 | `FASTAUTH_WEAK_PASSWORD` |
+
+<Callout variant="note">
+  Match on `error.code`, not on `error.message`. Messages are written for humans
+  and may be reworded; the codes are the contract.
+</Callout>

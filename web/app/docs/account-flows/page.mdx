@@ -1,0 +1,149 @@
+export const metadata = {
+  title: "Account flows",
+  description:
+    "Password reset, password change, and email verification in FastAuth: how the single-use tokens work, why the forgot endpoint always returns 200, and how to deliver tokens by email.",
+  alternates: { canonical: "/docs/account-flows" },
+};
+
+<Eyebrow>Guide</Eyebrow>
+
+# Password reset, change, and email verification
+
+<Lede>
+  The account flows every real app needs, already mounted by{" "}
+  <code>auth.setup(app)</code>. FastAuth issues and validates the tokens;
+  delivering them (usually by email) is one small hook.
+</Lede>
+
+## Delivery hooks
+
+FastAuth deliberately does not send email. Email is a product decision — which
+provider, what the message says, which language, which template — so instead it
+hands you the token and gets out of the way.
+
+```python:main.py
+@auth.on_password_reset
+def send_reset(user, token):
+    send_email(user.email, f"Reset your password with this token: {token}")
+
+@auth.on_email_verify
+def send_verify(user, token):
+    send_email(user.email, f"Verify your email with this token: {token}")
+```
+
+In a real app you would usually send a link rather than a bare token, with the
+token in the query string, pointing at a page in your frontend that collects
+the new password and posts it to the API:
+
+```python:main.py
+@auth.on_password_reset
+def send_reset(user, token):
+    link = f"https://yourapp.com/reset?token={token}"
+    send_email(user.email, f"Reset your password: {link}")
+```
+
+<Callout variant="note">
+  No hook registered? In development the token is printed to the console, so you
+  can walk the whole flow before wiring up email.
+</Callout>
+
+## How the reset flow works
+
+<ResetFlowDiagram />
+
+1. `POST /password/forgot` with an email address
+2. Your hook delivers the reset token to the user
+3. `POST /password/reset` with the token and the new password
+4. Every session logged in with the old password is revoked automatically
+
+Three details in there are security decisions worth understanding, because they
+look like bugs if you do not know why they are there.
+
+### The forgot endpoint always returns 200
+
+Even for an email address with no account. This looks unhelpful, and it is
+deliberate.
+
+If the endpoint returned `404` for unknown addresses, anyone could feed it a
+list of email addresses and learn which ones have accounts with you. That is
+called **user enumeration**, and depending on what your site is, merely
+confirming that someone has an account can be sensitive. An identical response
+either way reveals nothing.
+
+The practical consequence is that your UI should say something like "if that
+address has an account, we've sent a link" rather than "check your email",
+since you genuinely do not know.
+
+### Reset tokens are single-use
+
+The token carries a fingerprint of the user's current password hash. Validation
+recomputes the fingerprint and requires a match.
+
+The moment the password changes, the hash changes, so the fingerprint no longer
+matches and the token is dead — with nothing stored and nothing to clean up. A
+reset link forwarded by accident, or sitting in an old email, cannot be used a
+second time.
+
+### Old sessions are revoked
+
+Someone resetting a password may well be doing it because they think another
+person has access. Leaving that person's existing tokens working would defeat
+the point, so FastAuth increments the user's `token_version`, invalidating
+every token issued before the change.
+
+## Password change and signing out everywhere
+
+Logged-in users can rotate their own password with `POST /password/change`,
+which requires the current password as well as the new one — so someone who
+walks up to an unlocked laptop cannot silently take the account over. It
+revokes other sessions the same way a reset does.
+
+`POST /logout/all` revokes every session without changing the password, which
+is the right response to "I was logged in on a computer I no longer have".
+
+<Callout variant="note">
+  `POST /logout` only clears the cookie on the current device. `POST /logout/all`
+  invalidates tokens everywhere. Both are useful; they answer different
+  questions.
+</Callout>
+
+## Email verification
+
+Verification proves the address belongs to whoever registered, which matters
+before you send notifications to it, use it for password recovery, or let it
+identify someone publicly.
+
+Request a token with `POST /email/verify/request`, confirm it with
+`POST /email/verify`, then require it on any route:
+
+```python:main.py
+@app.get("/billing")
+def billing(user: User = Depends(auth.verified_user)):
+    ...
+```
+
+Unverified users get a `403` with `FASTAUTH_EMAIL_NOT_VERIFIED`, distinct from
+an ordinary permission failure, so your client can prompt them to check their
+inbox rather than showing a generic error.
+
+## Custom claims
+
+If your app needs extra data in every issued token, add it with a hook:
+
+```python:main.py
+@auth.token_claims
+def claims(user):
+    return {"plan": user.plan}
+```
+
+<Callout variant="warning">
+  Remember that a JWT payload is [signed but not encrypted](/docs/concepts) —
+  anyone holding the token can read every claim in it. Put identifiers and
+  non-sensitive flags here, never anything private.
+</Callout>
+
+<Callout variant="warning">
+  Verification state lives in the `email_verified` column, added in v0.6.0. An
+  existing database needs that column before these routes will work. See the
+  [production notes](/docs/production) on migrations.
+</Callout>

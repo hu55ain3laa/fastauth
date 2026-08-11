@@ -1,0 +1,136 @@
+export const metadata = {
+  title: "Troubleshooting",
+  description:
+    "Find your error message and the thing that fixes it: 401s, 403s, cookies not being set, tokens rejected after upgrade, and startup hangs.",
+  alternates: { canonical: "/docs/troubleshooting" },
+};
+
+<Eyebrow>Reference</Eyebrow>
+
+# Troubleshooting
+
+<Lede>
+  Organised by what you are seeing, not by what causes it, because the error is
+  the part you have. Find your symptom, apply the fix, carry on.
+</Lede>
+
+## 401 on a route that should work
+
+A `401` always means the same thing: FastAuth could not establish who you are.
+Work down this list in order.
+
+<Fixes>
+
+<Fix error="401 · Not authenticated">
+No token arrived at all. Confirm the request carries either an
+`Authorization: Bearer <token>` header or the auth cookie. In `/docs`, this
+means clicking **Authorize** and logging in first.
+</Fix>
+
+<Fix error="401 · FASTAUTH_INVALID_TOKEN">
+A token arrived but did not verify. In order of likelihood: it expired (30
+minutes by default, so log in again); your `secret_key` changed since the token
+was issued, which invalidates every existing token; or you sent a *refresh*
+token where an access token was expected.
+</Fix>
+
+<Fix error="401 · FASTAUTH_INVALID_CREDENTIALS on /token">
+The username or password is wrong. If you changed the code that seeds your
+admin, the user in the database still has the old password — delete the SQLite
+file and restart, or reset the password deliberately.
+</Fix>
+
+<Fix error="Everyone was logged out at once, with no deploy">
+Your `secret_key` is not stable between restarts. If you never set one,
+FastAuth generates a development secret and stores it in `.fastauth-secret`;
+if that file is not persisted, every restart mints a new key and invalidates
+every token. Set `SECRET_KEY` in the environment.
+</Fix>
+
+</Fixes>
+
+## 403 when the user is definitely logged in
+
+A `403` means the opposite of a `401`: you are authenticated fine, and the
+answer is still no. Sending the user to the login page will not help.
+
+<Fixes>
+
+<Fix error="403 · FASTAUTH_PERMISSION_DENIED">
+The account is missing a role the route requires. Check what it actually holds
+with `GET /roles/user/{user_id}`, and assign one with
+`POST /roles/assign/{user_id}/{role_id}`. Remember `auth.all_roles(...)`
+requires *every* listed role, not any of them.
+</Fix>
+
+<Fix error="403 · FASTAUTH_INACTIVE_USER">
+The user's `disabled` column is `True`. This is checked at login, at refresh,
+and on every protected route.
+</Fix>
+
+<Fix error="403 · FASTAUTH_EMAIL_NOT_VERIFIED">
+The route depends on `auth.verified_user` and this account has not confirmed
+its address. Send them through `POST /email/verify/request`, or use
+`auth.current_user` if verification is not actually required here.
+</Fix>
+
+</Fixes>
+
+## Cookies are not being set or sent
+
+<Fixes>
+
+<Fix error="Login succeeds but the browser has no cookie">
+Either `use_cookie=False` (it is off by default), or `cookie_secure=True` while
+you are browsing over plain `http://`. A Secure cookie is silently discarded by
+the browser on a non-HTTPS origin — no error, it simply never appears. Use
+`cookie_secure=False` in development.
+</Fix>
+
+<Fix error="The cookie exists but protected routes still 401">
+The browser is not sending it cross-origin. If your frontend is on a different
+port or domain from the API, the request needs `credentials: "include"`, your
+CORS middleware needs `allow_credentials=True`, and `allow_origins` cannot be
+`["*"]` when credentials are enabled.
+</Fix>
+
+<Fix error="Auth works locally but breaks behind a proxy in production">
+Your app is not seeing HTTPS. Behind a reverse proxy the app receives plain
+HTTP and considers the connection insecure, so Secure cookies are dropped.
+Forward `X-Forwarded-Proto` and run the server with `--proxy-headers`.
+</Fix>
+
+</Fixes>
+
+## Database and startup
+
+<Fixes>
+
+<Fix error="sqlite3.OperationalError: no such column: user.email_verified">
+Your database predates v0.6.0, which added `email_verified` and
+`token_version`. Add the columns with `ALTER TABLE` or an Alembic migration. A
+development SQLite file can simply be deleted and rebuilt — `create_all` never
+alters an existing table, so this will not fix itself.
+</Fix>
+
+<Fix error="Startup hangs with no output">
+`initialize_db` is waiting on a console prompt for admin credentials that will
+never come, because there is no terminal attached. Always pass
+`admin_username` and `admin_password` explicitly when initializing at startup.
+</Fix>
+
+<Fix error="Table 'user' is already defined for this MetaData instance">
+Two SQLModel table models are claiming the same table. When using a custom user
+model, do not also import FastAuth's built-in `User` anywhere in the app.
+</Fix>
+
+</Fixes>
+
+## Still stuck?
+
+Turn on your app's logs and look at the actual `error.code` in the response
+body rather than the status alone — the codes are listed on
+[error handling](/docs/errors) and each maps to exactly one cause. If that does
+not resolve it, open an issue on
+[GitHub](https://github.com/hu55ain3laa/fastauth/issues) with the code, the
+FastAuth version, and the smallest snippet that reproduces it.

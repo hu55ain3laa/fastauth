@@ -1,0 +1,30 @@
+export const metadata = {
+  title: "Project structure",
+  description: "How the FastAuth package is laid out, layer by layer.",
+  alternates: { canonical: "/docs/project-structure" },
+};
+
+<Eyebrow>Reference</Eyebrow>
+
+# Project structure
+
+<Lede>
+  A modular layout: swap or extend any layer without touching the rest.
+</Lede>
+
+```text:fastauth/
+fastauth/
+├── core/           # the main FastAuth class
+├── security/       # password hashing and JWT management
+├── models/         # user, role, and token models
+├── routers/        # auth and role endpoints
+├── dependencies/   # FastAPI dependencies for auth and roles
+├── exceptions.py   # standardized exceptions and handlers
+├── cli.py          # database initialization CLI
+└── utils/          # session helpers
+```
+
+Each layer is importable on its own. `security` knows nothing about FastAPI,
+`routers` is the only layer that defines HTTP surface, and `core` is the thin
+object that wires them together for you. That is what makes
+[level 3 customization](/docs/customization) possible without forking anything.

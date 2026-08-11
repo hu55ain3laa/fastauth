@@ -1,0 +1,124 @@
+export const metadata = {
+  title: "Quick start",
+  description:
+    "A complete FastAPI app with login, refresh tokens, registration, roles, and protected routes, in three steps.",
+  alternates: { canonical: "/docs/quick-start" },
+};
+
+<Eyebrow>Start</Eyebrow>
+
+# Quick start
+
+<Lede>
+  A complete app with login, refresh tokens, registration, roles, and protected
+  routes, in three steps.
+</Lede>
+
+**What you will have at the end:** a running FastAPI app with 19 auth
+endpoints, password hashing, an admin account, and a protected route — in one
+file, in about five minutes. Every endpoint will be visible and testable at
+`/docs`.
+
+<Callout variant="learn">
+  First time building auth, or FastAPI itself is new to you? Take the
+  [easy mode guide](/docs/easy-mode): one file, five minutes, every step
+  checked.
+</Callout>
+
+<Steps>
+
+<Step title="Install the package">
+
+```bash:shell
+uv add fastauth_iq "fastapi[standard]"
+```
+
+</Step>
+
+<Step title="Wire FastAuth into your app">
+
+```python:main.py
+from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI
+from sqlmodel import Session, create_engine
+
+from fastauth import FastAuth, User
+
+engine = create_engine("sqlite:///./app.db",
+                       connect_args={"check_same_thread": False})
+
+def get_session():
+    with Session(engine) as session:
+        yield session
+
+auth = FastAuth(
+    # Use a strong, secret value in production
+    secret_key="your-secure-secret-key",
+    engine=engine,
+    # Also accept the token from an HTTP-only cookie
+    use_cookie=True,
+    # Allow cookies over plain HTTP while developing
+    cookie_secure=False,
+    token_url="/token",
+    access_token_expires_in=30,  # minutes
+    refresh_token_expires_in=7,  # days
+)
+
+# Create tables, standard roles, and a superadmin on startup
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    auth.initialize_db(
+        admin_username="superadmin",
+        admin_password="admin123",  # change in production!
+    )
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
+# One call adds all auth + role routes and standardized error handling
+auth.setup(app, session_getter=get_session)
+```
+
+</Step>
+
+<Step title="Protect your routes">
+
+```python:main.py
+# Any signed-in, active user
+@app.get("/protected")
+def protected_route(user: User = Depends(auth.current_user)):
+    return {"message": f"Hello, {user.username}!"}
+
+# Any of the listed roles
+@app.get("/staff")
+def staff_route(user: User = Depends(auth.roles("admin", "moderator"))):
+    return {"message": f"Hello, {user.username}!"}
+
+# All of the listed roles
+@app.get("/premium-verified")
+def premium_route(user: User = Depends(auth.all_roles("premium", "verified"))):
+    return {"message": f"Hello, {user.username}!"}
+
+# Shortcut for admin-only routes
+@app.get("/admin-only")
+def admin_route(user: User = Depends(auth.admin)):
+    return {"message": f"Hello, {user.username}!"}
+
+# Or protect a whole router at once
+from fastapi import APIRouter
+staff_area = APIRouter(dependencies=[auth.required])
+```
+
+Run `uv run fastapi dev main.py` and open `/docs`. Every endpoint is there,
+documented and ready to try.
+
+</Step>
+
+</Steps>
+
+## Where to go next
+
+- [Authentication](/docs/authentication) covers tokens, protected routes, and cookies in depth
+- [Roles](/docs/roles) explains the six standard roles and the role management API
+- [Production](/docs/production) is the checklist to work through before you deploy

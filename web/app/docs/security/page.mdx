@@ -1,0 +1,123 @@
+export const metadata = {
+  title: "Security",
+  description:
+    "The attacks FastAuth defends against and the ones it cannot: XSS, CSRF, brute force, token theft, and the practices worth following before you ship.",
+  alternates: { canonical: "/docs/security" },
+};
+
+<Eyebrow>Reference</Eyebrow>
+
+# Security best practices
+
+<Lede>
+  FastAuth's defaults are safe and production mode enforces most of this for
+  you. These are the decisions still worth making deliberately, and the reasons
+  behind them.
+</Lede>
+
+## The checklist
+
+- Serve your app over **HTTPS** in production
+- Use a **strong secret key**: generate one with `openssl rand -hex 32` and keep
+  it in environment variables, not code
+- **Change the default superadmin password**. Never ship `admin123`
+- Tune **token lifetimes** to your requirements. Shorter access tokens mean a
+  stolen one is useful for less time
+- Keep `cookie_secure=True` in production when using cookie auth
+- Add **rate limiting** on authentication endpoints to slow brute-force attempts
+
+Turning on [production mode](/docs/production) enforces the first three at
+startup rather than trusting you to remember them.
+
+## What each of these actually prevents
+
+### Why HTTPS is not optional
+
+Over plain HTTP, every request is readable by anyone on the network path: the
+coffee shop wifi, the ISP, anyone running a proxy. That includes the password
+on the way in and the token on every request afterwards. No amount of hashing
+or signing helps, because an attacker does not need to break the token when
+they can simply copy it and present it as their own.
+
+This is also what `cookie_secure=True` is for. It tells the browser to withhold
+the cookie entirely from non-HTTPS requests, so a single stray `http://` link
+cannot leak a session.
+
+### Why the secret key is the whole ballgame
+
+A JWT's signature is what makes it unforgeable, and the signature is computed
+from your `secret_key`. Anyone who has that key can mint a token claiming to be
+any user, including your superadmin, and your server will accept it as genuine.
+Nothing else in the system matters if the key leaks.
+
+So: at least 32 random characters, from an environment variable, never
+committed. Production mode refuses to start without one, rather than quietly
+inventing a development secret the way it does locally.
+
+If a key is ever exposed, rotating it invalidates every existing token at once,
+logging everyone out. That is inconvenient and absolutely the right trade.
+
+### XSS and why tokens should not live in localStorage
+
+**Cross-site scripting** is an attacker getting their JavaScript to run on your
+page — through an unescaped comment, a URL parameter rendered as HTML, or a
+compromised npm dependency. Once it runs, it acts with the full authority of
+your page.
+
+Anything in `localStorage` is readable by that script, so a token kept there is
+a token stolen. A cookie marked **HttpOnly** is not exposed to JavaScript at
+all, which is why FastAuth always sets that flag. It does not stop XSS, but it
+stops XSS from walking away with the session.
+
+### CSRF and SameSite
+
+**Cross-site request forgery** exploits the very thing that makes cookies
+convenient: the browser attaches them automatically. If a logged-in user visits
+`evil.com`, a hidden form there can post to your API and the browser will
+attach their cookie, making the request look entirely legitimate.
+
+The **SameSite** flag is the fix: it tells the browser not to attach the cookie
+on cross-site requests. FastAuth defaults to `lax`, which blocks cross-site
+form posts while still allowing normal navigation to your site. `strict` is
+tighter, at the cost of arriving logged out when following a link from
+elsewhere.
+
+Note that header-based auth is not exposed to CSRF at all, since nothing is
+attached automatically. This is the main security argument for the header on
+browser clients, weighed against its exposure to XSS.
+
+### Brute force, and the one thing FastAuth does not do
+
+Nothing stops an attacker submitting login attempts in a loop. bcrypt makes
+each guess expensive, which helps a great deal, but a determined attacker with
+a list of common passwords will still get through a weak one eventually.
+
+The answer is **rate limiting**: capping how many attempts one client may make
+in a given window, so a thousand guesses per second becomes five per minute.
+
+It is the single item on this list FastAuth does not implement, deliberately.
+Effective rate limiting belongs at the edge — in your **reverse proxy** (a
+server sitting in front of your app, such as Nginx or Caddy, or your host's load
+balancer), your CDN, or your hosting platform. Those can drop abusive traffic
+before it reaches Python at all, whereas a rate limiter written in Python is
+still running Python for every attempt it rejects.
+
+Most platforms give you this without writing code: Vercel, Cloudflare, and
+Nginx all rate limit by path.
+
+Rate limit `POST /token`, `POST /users`, and `POST /password/forgot` at minimum.
+
+<Callout variant="note">
+  FastAuth's own defences against enumeration and replay are covered in
+  [account flows](/docs/account-flows): the forgot-password endpoint always
+  returns 200 so it cannot be used to discover which addresses have accounts,
+  and reset tokens are single-use.
+</Callout>
+
+## A note on scope
+
+FastAuth secures authentication and authorization. It does not, and cannot,
+secure the rest of your application. SQL injection in your own queries, secrets
+in your logs, an object your API returns to the wrong user — none of that is
+touched by anything on this page. Getting auth right is necessary, not
+sufficient.

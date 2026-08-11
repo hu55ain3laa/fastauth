@@ -6,8 +6,8 @@ role-based access control, ready-made routes, and database initialization.
 
 - Package name on PyPI: `fastauth_iq` (import as `fastauth`)
 - Python: 3.10+ · Stack: FastAPI, SQLModel (SQLAlchemy engine), PyJWT, bcrypt
-- Docs site: https://hu55ain3laa.github.io/fastauth/
-- Beginner tutorial: https://hu55ain3laa.github.io/fastauth/easy-mode.html
+- Docs site: https://fastauth.vercel.app
+- Beginner tutorial: https://fastauth.vercel.app/docs/easy-mode
 - Source: https://github.com/hu55ain3laa/fastauth
 
 ## Install
@@ -62,7 +62,7 @@ Generate a secret: `openssl rand -hex 32`.
 | `engine` | required | SQLModel/SQLAlchemy engine |
 | `algorithm` | `"HS256"` | JWT algorithm |
 | `use_cookie` | `True` | Also accept/set an HTTP-only `access_token` cookie |
-| `token_url` | `"token"` | Login endpoint path used by the OAuth2 scheme |
+| `token_url` | `"/token"` | Login endpoint path used by the OAuth2 scheme |
 | `access_token_expires_in` | `30` | Access token lifetime (minutes) |
 | `refresh_token_expires_in` | `7` | Refresh token lifetime (days) |
 | `user_model` | `User` | Custom SQLModel user class; must set `__tablename__ = "user"` (a clear error is raised otherwise) and should include the `email_verified` and `token_version` columns for verification/revocation features |
@@ -85,7 +85,8 @@ router = APIRouter(dependencies=[auth.required])        # protect a whole router
 router = APIRouter(dependencies=[auth.admin_required])  # admin-only router
 ```
 
-Long-form equivalents still work: `auth.get_current_active_user_dependency()`,
+Long-form equivalents still work but are **deprecated** and will be removed in
+1.0, emitting a `DeprecationWarning`: `auth.get_current_active_user_dependency()`,
 `auth.require_roles([...])`, `auth.require_all_roles([...])`, `auth.is_admin()`.
 
 ## Key methods
@@ -161,7 +162,7 @@ Exception classes with the same names (minus prefix) are importable from `fastau
 ```
 fastauth/            # the library (core/, security/, models/, routers/, dependencies/, exceptions.py, cli.py)
 tests/               # pytest suite (also runs in CI on Python 3.10-3.14)
-index.html           # docs site (GitHub Pages), easy-mode.html = student tutorial
+web/                 # docs site (Next.js, deployed on Vercel); content in web/app/docs/*.mdx
 ```
 
 - Run tests: `pytest tests/ -v` (needs `pip install -e ".[dev]"`)

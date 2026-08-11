@@ -1,0 +1,209 @@
+export const metadata = {
+  title: "Easy mode",
+  description:
+    "Real logins for your class project, with zero headache. Signup, login, protected pages, and an admin user for your FastAPI app in one file and five minutes.",
+  alternates: { canonical: "/docs/easy-mode" },
+};
+
+<Eyebrow>Easy mode · for students</Eyebrow>
+
+# Real logins for your class project. Zero headache.
+
+<Lede>
+  Signup, login, protected pages, and an admin user for your FastAPI app. You
+  will copy one file and run two commands. That's the whole tutorial.
+</Lede>
+
+**1 file · 5 minutes · copy and paste ready**
+
+<Steps>
+
+<Step title="Make a project">
+
+Open a terminal and run these commands. They create a folder, move into it, and
+install FastAuth together with FastAPI.
+
+```bash:terminal
+uv init myapp
+cd myapp
+uv add fastauth_iq "fastapi[standard]"
+```
+
+<Callout variant="note">
+  No `uv` on your computer? Install it first: `brew install uv` on macOS,
+  `winget install --id=astral-sh.uv -e` on Windows, or see the
+  [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/).
+</Callout>
+
+</Step>
+
+<Step title="Paste this file">
+
+Create a file called **main.py** in your folder and paste all of this in. You
+don't need to change anything yet.
+
+```python:main.py
+from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI
+from sqlmodel import create_engine
+
+from fastauth import FastAuth, User
+
+# A database file that lives next to your code. No setup needed.
+engine = create_engine("sqlite:///./app.db",
+                       connect_args={"check_same_thread": False})
+
+auth = FastAuth(
+    secret_key="any-long-random-text-works-here",
+    engine=engine,
+)
+
+# On startup: create the database and an admin user (admin / admin123)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    auth.initialize_db(admin_username="admin", admin_password="admin123")
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
+# This one line adds signup, login, logout, and more to your app
+auth.setup(app)
+
+# Your first protected page: only logged-in users can open it
+@app.get("/protected")
+def protected(user: User = Depends(auth.current_user)):
+    return {"hello": user.username}
+```
+
+The `secret_key` is what signs your login tokens, so make it truly random.
+Generate one in your terminal and paste the output into `secret_key=""`:
+
+```bash:terminal
+openssl rand -hex 32
+
+# no openssl? (common on Windows) use Python instead
+uv run python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+</Step>
+
+<Step title="Run it">
+
+```bash:terminal
+uv run fastapi dev main.py
+```
+
+<Checkpoint label="Checkpoint · your terminal should say">
+{`Created role: superadmin
+Created new superadmin user: admin
+INFO   Application startup complete.
+INFO   Uvicorn running on http://127.0.0.1:8000`}
+</Checkpoint>
+
+Your app is now running with a full auth system inside it. Leave the terminal
+open.
+
+</Step>
+
+<Step title="Log in and try it">
+
+Open [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs) in your browser.
+FastAPI draws an interactive page with every endpoint your app now has. Then:
+
+1. Click the green **Authorize** button at the top right and log in with
+   username `admin` and password `admin123`
+2. Open **GET /protected**, click **Try it out**, then **Execute**
+
+<Checkpoint label="Checkpoint · the response body should be">
+{`{
+  "hello": "admin"
+}`}
+</Checkpoint>
+
+Now click **Authorize** again and press **Logout**, then try **GET /protected**
+once more. You get a `401 Not authenticated` error. That is your protection
+working.
+
+You can also register a normal user with **POST /users** and log in as them.
+Try it: give yourself a username, an email, and a password.
+
+</Step>
+
+<Step title="That's it. You have auth.">
+
+Here is what FastAuth quietly did for you:
+
+- **Signup and login endpoints**: `/users`, `/token`, `/users/me`, and `/logout`
+  were added by `auth.setup(app)`
+- **Passwords are hashed** with bcrypt, so real passwords are never stored in
+  your database
+- **Logins use JWT tokens**: after login, the client gets a signed token and
+  sends it back with each request
+- **Roles are ready**: an admin role already exists, and `auth.admin`
+  protects admin-only routes the same way you protected `/protected`
+
+</Step>
+
+</Steps>
+
+## When something breaks
+
+Every one of these has happened to every one of us. Find your error, apply the
+fix, carry on.
+
+<Fixes>
+
+<Fix error="command not found: uv">
+uv isn't installed yet. Go back to step 1 and install it, then close and reopen
+your terminal.
+</Fix>
+
+<Fix error="ModuleNotFoundError: No module named 'fastauth'">
+You're outside your project folder, or the install didn't run. `cd myapp`, then
+run `uv add fastauth_iq` again, and always start the app with `uv run`.
+</Fix>
+
+<Fix error="401 Not authenticated">
+You're not logged in. Click **Authorize** in `/docs` and log in first. Tokens
+also expire after 30 minutes, so just log in again.
+</Fix>
+
+<Fix error="403 Forbidden / Insufficient permissions">
+You're logged in, but your user doesn't have the role that route requires. Log
+in as `admin`, or assign the role with **POST /roles/assign**.
+</Fix>
+
+<Fix error="Incorrect username or password">
+Check for typos, the password is `admin123` exactly. If you changed the code,
+delete the `app.db` file and restart so the admin user is created again.
+</Fix>
+
+<Fix error="sqlite3.OperationalError: no such column / no such table">
+You changed a model after the database file was created. While learning, just
+delete `app.db` and restart the app. It will be rebuilt fresh.
+</Fix>
+
+<Fix error="Address already in use">
+The app is already running in another terminal. Find that window and stop it
+with `Ctrl+C`, then run it again.
+</Fix>
+
+</Fixes>
+
+## Words you'll meet
+
+| Word | What it means |
+| --- | --- |
+| JWT | A signed pass card. Your server hands it out at login and checks the signature on every request. |
+| hash | A one-way scramble of a password. You can check a password against it, but never turn it back. |
+| access token | The short-lived JWT (30 minutes here) you send with requests to prove who you are. |
+| refresh token | A longer-lived token (7 days here) used to get a new access token without logging in again. |
+| role | A label on a user, like `admin` or `premium`, that routes can require. |
+| cookie | A small piece of data your browser stores and sends automatically. FastAuth can keep your token in one. |
+
+## Ready for more?
+
+The [quick start](/docs/quick-start) shows the same app with refresh tokens,
+cookies, and roles configured explicitly. When you are ready to put it online,
+[production](/docs/production) is the checklist to work through.

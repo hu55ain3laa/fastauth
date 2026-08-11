@@ -1,0 +1,87 @@
+export const metadata = {
+  title: "Endpoints",
+  description:
+    "Every route auth.setup(app) mounts: authentication, account flows, and the role management API.",
+  alternates: { canonical: "/docs/endpoints" },
+};
+
+<Eyebrow>Reference</Eyebrow>
+
+# Endpoints
+
+<Lede>
+  Every route <code>auth.setup(app)</code> mounts. They all appear in your app's
+  own <code>/docs</code> page too, documented and ready to try.
+</Lede>
+
+## Authentication
+
+<EndpointList>
+  <Endpoint method="POST" path="/token">
+    Log in; returns access + refresh tokens, sets the cookie when enabled
+  </Endpoint>
+  <Endpoint method="POST" path="/token/refresh">
+    Exchange a refresh token for a new access token
+  </Endpoint>
+  <Endpoint method="POST" path="/users">
+    Register a new user; username and email must be unique
+  </Endpoint>
+  <Endpoint method="GET" path="/users/me">
+    The current authenticated user's profile
+  </Endpoint>
+  <Endpoint method="POST" path="/logout">
+    Clear the authentication cookie
+  </Endpoint>
+  <Endpoint method="POST" path="/logout/all">
+    Revoke every token for the current user, on all devices
+  </Endpoint>
+</EndpointList>
+
+## Account flows
+
+<EndpointList>
+  <Endpoint method="POST" path="/password/forgot">
+    Issue a reset token; always 200, delivered via your hook
+  </Endpoint>
+  <Endpoint method="POST" path="/password/reset">
+    Set a new password with a single-use reset token
+  </Endpoint>
+  <Endpoint method="POST" path="/password/change">
+    Change the logged-in user's password; revokes old sessions
+  </Endpoint>
+  <Endpoint method="POST" path="/email/verify/request">
+    Issue an email verification token for the logged-in user
+  </Endpoint>
+  <Endpoint method="POST" path="/email/verify">
+    Confirm an email address with a verification token
+  </Endpoint>
+</EndpointList>
+
+## Role management
+
+<EndpointList>
+  <Endpoint method="GET" path="/roles/">
+    List all roles
+  </Endpoint>
+  <Endpoint method="POST" path="/roles/" admin>
+    Create a new role
+  </Endpoint>
+  <Endpoint method="GET" path="/roles/{role_id}">
+    Get a role by ID
+  </Endpoint>
+  <Endpoint method="PUT" path="/roles/{role_id}" admin>
+    Update a role
+  </Endpoint>
+  <Endpoint method="DELETE" path="/roles/{role_id}" admin>
+    Delete a role
+  </Endpoint>
+  <Endpoint method="POST" path="/roles/assign/{user_id}/{role_id}" admin>
+    Assign a role to a user
+  </Endpoint>
+  <Endpoint method="DELETE" path="/roles/assign/{user_id}/{role_id}" admin>
+    Remove a role from a user
+  </Endpoint>
+  <Endpoint method="GET" path="/roles/user/{user_id}">
+    List a user's roles
+  </Endpoint>
+</EndpointList>

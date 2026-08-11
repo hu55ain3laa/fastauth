@@ -1,0 +1,70 @@
+export const metadata = {
+  title: "Advanced usage",
+  description:
+    "Custom user models and custom authentication logic built from FastAuth's public primitives.",
+  alternates: { canonical: "/docs/advanced" },
+};
+
+<Eyebrow>Reference</Eyebrow>
+
+# Advanced usage
+
+<Lede>
+  Bring your own user model, or compose the primitives into a login flow of your
+  own design.
+</Lede>
+
+## Custom user models
+
+Add your own fields to the user model. Role checks and the CLI respect it:
+
+```python:models.py
+from datetime import datetime
+from typing import Optional
+
+from sqlmodel import SQLModel, Field
+
+class CustomUser(SQLModel, table=True):
+    __tablename__ = "user"  # keep the table name expected by the role system
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(unique=True, index=True)
+    email: str = Field(unique=True)
+    hashed_password: str
+    disabled: bool = Field(default=False)
+    # your extra fields
+    first_name: str = Field(default="")
+    last_name: str = Field(default="")
+    created_at: datetime = Field(default_factory=datetime.now)
+
+auth = FastAuth(
+    # ... other parameters ...
+    user_model=CustomUser,
+)
+```
+
+<Callout variant="warning">
+  Don't import fastauth's built-in `User` model in the same app when using a
+  custom one; two table models for the same table will conflict.
+</Callout>
+
+## Custom authentication logic
+
+```python:main.py
+@app.post("/custom-login")
+async def custom_login(
+    username: str,
+    password: str,
+    session: Session = Depends(get_session),
+):
+    user = auth.authenticate_user(username, password, session=session)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    access_token = auth.create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+```
+
+The same primitives FastAuth's own routes use are public:
+`auth.token_manager`, `auth.password_manager`, `auth.authenticate_user()`, and
+`RoleManager`. Anything the built-in routes do, your code can do too.
