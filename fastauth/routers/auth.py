@@ -68,8 +68,14 @@ class AuthRouter:
 
         router = APIRouter()
 
+        # Handlers that hash a password, touch the database, or call a delivery
+        # hook are declared `def`, not `async def`. FastAPI runs an `async def`
+        # handler on the event loop, where a single bcrypt verification (~200ms)
+        # stalls every other request in the process; a `def` handler is run in a
+        # threadpool instead. Only handlers that do no blocking work stay async.
+
         @router.post("/token", response_model=Token)
-        async def login_for_access_token(
+        def login_for_access_token(
             response: Response,
             form_data: OAuth2PasswordRequestForm = Depends(),
             session: Session = Depends(session_getter),
@@ -95,7 +101,7 @@ class AuthRouter:
             )
 
         @router.post("/token/refresh", response_model=Token)
-        async def refresh_access_token(
+        def refresh_access_token(
             response: Response,
             body: RefreshRequest,
             session: Session = Depends(session_getter),
@@ -166,7 +172,7 @@ class AuthRouter:
             return {"message": "Successfully logged out"}
 
         @router.post("/logout/all")
-        async def logout_everywhere(
+        def logout_everywhere(
             response: Response,
             current_user=Depends(self.auth.dependencies.get_current_active_user()),
             session: Session = Depends(session_getter),
@@ -185,7 +191,7 @@ class AuthRouter:
                 )
 
         @router.post("/password/forgot")
-        async def forgot_password(
+        def forgot_password(
             body: PasswordForgotRequest,
             session: Session = Depends(session_getter),
         ):
@@ -214,7 +220,7 @@ class AuthRouter:
             return {"message": "If that account exists, a reset token has been issued"}
 
         @router.post("/password/reset")
-        async def reset_password(
+        def reset_password(
             body: PasswordResetRequest,
             session: Session = Depends(session_getter),
         ):
@@ -241,7 +247,7 @@ class AuthRouter:
             return {"message": "Password updated. Please log in again."}
 
         @router.post("/password/change")
-        async def change_password(
+        def change_password(
             body: PasswordChangeRequest,
             current_user=Depends(self.auth.dependencies.get_current_active_user()),
             session: Session = Depends(session_getter),
@@ -265,7 +271,7 @@ class AuthRouter:
             return {"message": "Password updated. Please log in again."}
 
         @router.post("/email/verify/request")
-        async def request_email_verification(
+        def request_email_verification(
             current_user=Depends(self.auth.dependencies.get_current_active_user()),
         ):
             """Issue an email verification token for the logged-in user."""
@@ -280,7 +286,7 @@ class AuthRouter:
             return {"message": "Verification token issued"}
 
         @router.post("/email/verify")
-        async def verify_email(
+        def verify_email(
             body: EmailVerifyRequest,
             session: Session = Depends(session_getter),
         ):

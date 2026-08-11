@@ -36,7 +36,9 @@ class RoleDependencies:
         Returns:
             callable: A dependency returning the current user if authorized
         """
-        async def _check_roles(
+        # Sync for the same reason as the auth dependencies: every role check
+        # queries the database, which must not happen on the event loop.
+        def _check_roles(
             current_user: User = Depends(self.auth_deps.get_current_active_user()),
             db: Session = Depends(self.auth_deps.get_db_session()),
         ):

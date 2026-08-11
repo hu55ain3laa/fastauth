@@ -81,10 +81,10 @@ its address. Send them through `POST /email/verify/request`, or use
 <Fixes>
 
 <Fix error="Login succeeds but the browser has no cookie">
-Either `use_cookie=False` (it is off by default), or `cookie_secure=True` while
-you are browsing over plain `http://`. A Secure cookie is silently discarded by
-the browser on a non-HTTPS origin — no error, it simply never appears. Use
-`cookie_secure=False` in development.
+Either `use_cookie=False` (it is on by default, so check nothing turned it off),
+or `cookie_secure=True` while you are browsing over plain `http://`. A Secure
+cookie is silently discarded by the browser on a non-HTTPS origin — no error,
+it simply never appears. Use `cookie_secure=False` in development.
 </Fix>
 
 <Fix error="The cookie exists but protected routes still 401">

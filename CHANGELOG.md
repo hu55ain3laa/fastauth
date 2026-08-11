@@ -15,6 +15,18 @@ release can break your code. See
 
 ## [Unreleased]
 
+### Fixed
+
+- Authentication no longer blocks the event loop. Every route and dependency
+  that hashes a password or queries the database was declared `async def`,
+  which meant FastAPI ran it on the event loop: a single login held the whole
+  process for the duration of its bcrypt verification (roughly 200ms), and
+  every authenticated request blocked the loop for the length of its user
+  lookup. Concurrent logins queued behind one another and stalled unrelated
+  traffic. Those handlers are now synchronous, so FastAPI runs them in a
+  threadpool. No API changes: request and response shapes are identical, and
+  throughput under concurrency improves substantially.
+
 ## [0.8.0] - 2026-08-11
 
 ### Added

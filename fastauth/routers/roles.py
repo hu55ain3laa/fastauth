@@ -27,13 +27,17 @@ class RoleRouter:
     def _register_routes(self):
         """Register all role management routes."""
 
+        # Every handler below reaches the database through RoleManager, so they
+        # are `def` rather than `async def`: FastAPI runs sync handlers in a
+        # threadpool, keeping blocking queries off the event loop.
+
         @self.router.post(
             "/",
             response_model=RoleRead,
             status_code=status.HTTP_201_CREATED,
             dependencies=[Depends(self.role_deps.is_admin())],
         )
-        async def create_role(
+        def create_role(
             role_data: RoleCreate,
             role_manager: RoleManager = Depends(self.role_deps.get_role_manager()),
         ):
@@ -45,7 +49,7 @@ class RoleRouter:
             response_model=List[RoleRead],
             dependencies=[Depends(self.role_deps.get_current_active_user())],
         )
-        async def get_all_roles(
+        def get_all_roles(
             role_manager: RoleManager = Depends(self.role_deps.get_role_manager()),
         ):
             """Get all roles."""
@@ -56,7 +60,7 @@ class RoleRouter:
             response_model=RoleRead,
             dependencies=[Depends(self.role_deps.get_current_active_user())],
         )
-        async def get_role(
+        def get_role(
             role_id: int,
             role_manager: RoleManager = Depends(self.role_deps.get_role_manager()),
         ):
@@ -71,7 +75,7 @@ class RoleRouter:
             response_model=RoleRead,
             dependencies=[Depends(self.role_deps.is_admin())],
         )
-        async def update_role(
+        def update_role(
             role_id: int,
             role_data: RoleUpdate,
             role_manager: RoleManager = Depends(self.role_deps.get_role_manager()),
@@ -87,7 +91,7 @@ class RoleRouter:
             status_code=status.HTTP_204_NO_CONTENT,
             dependencies=[Depends(self.role_deps.is_admin())],
         )
-        async def delete_role(
+        def delete_role(
             role_id: int,
             role_manager: RoleManager = Depends(self.role_deps.get_role_manager()),
         ):
@@ -101,7 +105,7 @@ class RoleRouter:
             status_code=status.HTTP_200_OK,
             dependencies=[Depends(self.role_deps.is_admin())],
         )
-        async def assign_role_to_user(
+        def assign_role_to_user(
             user_id: int,
             role_id: int,
             role_manager: RoleManager = Depends(self.role_deps.get_role_manager()),
@@ -117,7 +121,7 @@ class RoleRouter:
             status_code=status.HTTP_200_OK,
             dependencies=[Depends(self.role_deps.is_admin())],
         )
-        async def remove_role_from_user(
+        def remove_role_from_user(
             user_id: int,
             role_id: int,
             role_manager: RoleManager = Depends(self.role_deps.get_role_manager()),
@@ -133,7 +137,7 @@ class RoleRouter:
             response_model=List[RoleRead],
             dependencies=[Depends(self.role_deps.get_current_active_user())],
         )
-        async def get_user_roles(
+        def get_user_roles(
             user_id: int,
             role_manager: RoleManager = Depends(self.role_deps.get_role_manager()),
         ):

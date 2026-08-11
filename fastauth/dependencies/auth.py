@@ -42,7 +42,11 @@ class AuthDependencies:
         Returns:
             callable: A dependency that extracts and validates the JWT token
         """
-        async def _get_current_user(token: Annotated[str, Depends(self.auth.oauth2_scheme)]):
+        # `def`, not `async def`: this reads the user from the database on every
+        # authenticated request, and a blocking read inside a coroutine stalls
+        # the whole event loop. FastAPI runs sync dependencies in a threadpool.
+        # The token extraction it depends on stays async; that one does no I/O.
+        def _get_current_user(token: Annotated[str, Depends(self.auth.oauth2_scheme)]):
             if not token:
                 raise CredentialsException("No token provided")
 
@@ -67,7 +71,7 @@ class AuthDependencies:
         Returns:
             callable: A dependency that validates the user is active
         """
-        async def _get_current_active_user(
+        def _get_current_active_user(
             current_user: Annotated[User, Depends(self.get_current_user())]
         ):
             if current_user.disabled:
@@ -84,7 +88,7 @@ class AuthDependencies:
         Returns:
             callable: A dependency that validates the user's email is verified
         """
-        async def _get_current_verified_user(
+        def _get_current_verified_user(
             current_user: Annotated[User, Depends(self.get_current_active_user())]
         ):
             if getattr(current_user, "email_verified", True) is False:
