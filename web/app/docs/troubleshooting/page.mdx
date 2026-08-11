@@ -124,6 +124,21 @@ Two SQLModel table models are claiming the same table. When using a custom user
 model, do not also import FastAuth's built-in `User` anywhere in the app.
 </Fix>
 
+<Fix error="The CLI created tables in the wrong database, or an empty one">
+Settings discovery found a partial database URL. Before v0.8.0 a line like
+`create_engine("sqlite:///" + name)` matched the discovery pattern and yielded
+just `"sqlite:///"`, which looks like a valid URL and points nowhere. Upgrade,
+or pass `--db-url` explicitly to remove the guesswork.
+</Fix>
+
+<Fix error="Everyone was logged out after a deploy, and SECRET_KEY looks correct">
+Something else supplied the key. Before v0.8.0 a `.env` file overrode real
+environment variables, so a stale `.env` shipped in an image would replace the
+`SECRET_KEY` your platform set, and every token would be signed with the wrong
+one. From v0.8.0 the environment wins. Check for a `.env` inside your build
+context, and prefer real environment variables in deployment.
+</Fix>
+
 </Fixes>
 
 ## Still stuck?

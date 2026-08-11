@@ -129,6 +129,19 @@ Release notes flag any release needing a schema change. v0.6.0 added
 `email_verified` and `token_version`, for instance. See
 [production](/docs/production) for handling those with Alembic.
 
+## Release history
+
+Every release is written up before it ships, so the notes describe what
+changed and what you need to do about it, rather than listing commits:
+
+- [Release notes on GitHub](https://github.com/hu55ain3laa/fastauth/releases)
+- [CHANGELOG.md](https://github.com/hu55ain3laa/fastauth/blob/main/CHANGELOG.md)
+
+The changelog covers the **published package** only. Changes to the
+repository's own tooling are not listed, because nothing there reaches you
+when you install `fastauth_iq`. If a release needs you to act — a migration, a
+changed default — it says so under **Upgrading**.
+
 ## Pinning
 
 For an application, pin a range that accepts fixes but not surprises:

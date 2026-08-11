@@ -53,10 +53,30 @@ fastauth app.py --username="admin" --password="secure_password"
 fastauth app.py --init-db --init-roles --create-superadmin
 ```
 
-The CLI looks for `DATABASE_URL` and `SECRET_KEY` in environment variables, a
-`.env` file, the app file itself, and common config files (`config.py`,
-`settings.py`, `db.py`, `database.py`, `models.py`), including imported
-`engine` objects.
+### Where the CLI looks for settings
+
+You rarely need to pass `--db-url` or `--secret-key`, because the CLI finds
+them. It checks these sources **in order** and stops at the first hit:
+
+| Order | Source |
+| --- | --- |
+| 1 | The flags you passed, `--db-url` and `--secret-key` |
+| 2 | Real environment variables: `DATABASE_URL`, `SECRET_KEY` |
+| 3 | A `.env` file in the current or parent directory |
+| 4 | The app file you named |
+| 5 | `config.py`, `settings.py`, `db.py`, `database.py`, `models.py` beside it |
+
+For the last two it reads assignments directly, and if that finds nothing it
+imports the module and inspects it — so a live `engine` object works even when
+its URL is built at runtime.
+
+<Callout variant="warning">
+  **The environment always beats `.env`.** A `.env` file only fills in what the
+  environment has not already set. This matters in deployment: if a `.env`
+  could override a real `SECRET_KEY`, a stale file left in an image would sign
+  every token with the wrong key, and nothing would tell you. Before v0.8.0
+  `.env` did win, so upgrade if you deploy with both.
+</Callout>
 
 ## Programmatic initialization
 

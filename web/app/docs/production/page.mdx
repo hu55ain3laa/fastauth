@@ -31,6 +31,14 @@ Need a key right now? Here is one, generated in your browser:
 
 <SecretGenerator />
 
+<Callout variant="note">
+  Set `SECRET_KEY` in your host's environment, not in a `.env` file you deploy.
+  Either works, but the environment takes precedence, so a stale `.env` in an
+  image cannot quietly override the key your platform provides. Signing tokens
+  with an unexpected key logs everyone out with nothing in the logs to explain
+  it.
+</Callout>
+
 ## Deploy checklist
 
 1. Set `SECRET_KEY` in your host's environment
