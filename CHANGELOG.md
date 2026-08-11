@@ -11,6 +11,8 @@ release can break your code. See
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-11
+
 ### Added
 
 - `scripts/prepare_release.py` bumps every version location and rolls the
@@ -55,7 +57,6 @@ release can break your code. See
   signing every token with the wrong key. The real environment now always
   wins, and `.env` fills in only what is missing.
 - Removed an unused import from `exceptions.py`.
-
 - The CI consistency job failed on every dependency-update pull request. Its
   changelog check diffed against the base branch with a three-dot range, which
   needs a merge base that the default shallow clone does not fetch. The job now
@@ -72,6 +73,20 @@ release can break your code. See
 - The publish workflow now runs the full Python 3.10-3.14 matrix rather than
   3.12 alone. A tag can point at a commit that never went through pull-request
   CI, so this is the only guarantee that what ships runs everywhere it claims.
+
+### Upgrading
+
+No action needed for most projects, but one behaviour changed deliberately:
+
+**A `.env` file no longer overrides real environment variables.** Previously a
+`.env` value won; now the environment does, and `.env` fills in only what is
+missing. This matches dotenv tooling elsewhere and closes a real hazard, where
+a stale `.env` in a deployed image silently replaced the production
+`SECRET_KEY`.
+
+If you relied on `.env` taking precedence, unset the variable in the
+environment instead, or pass the value explicitly with `--secret-key` /
+`--db-url`.
 
 ## [0.7.0] - 2026-08-11
 
@@ -230,7 +245,8 @@ Or use Alembic; see
 - `FastAuth` no longer exposes a shared `.session` attribute; pass a session to
   `authenticate_user(..., session=...)` or let it create one automatically
 
-[Unreleased]: https://github.com/hu55ain3laa/fastauth/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/hu55ain3laa/fastauth/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/hu55ain3laa/fastauth/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/hu55ain3laa/fastauth/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/hu55ain3laa/fastauth/releases/tag/v0.6.0
 [0.5.0]: https://github.com/hu55ain3laa/fastauth/releases
