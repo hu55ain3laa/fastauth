@@ -28,7 +28,7 @@ jobs:
       # A PAT lets the tag push trigger publish.yml. Tags pushed with the
       # default GITHUB_TOKEN deliberately do not start other workflows, so
       # without one we stop short of tagging and tell you the commands.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           token: ${{ secrets.RELEASE_TOKEN || github.token }}
           fetch-depth: 0
