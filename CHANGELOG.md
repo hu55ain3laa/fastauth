@@ -11,6 +11,16 @@ release can break your code. See
 
 ## [Unreleased]
 
+### Added
+
+- Dependabot pull requests for patch and minor updates now merge themselves
+  once CI is green. Major updates never do: they are labelled `major-update`
+  and commented with what to check. The split exists because Dependabot
+  proposed `upload-artifact` 4 to 7 without the paired `download-artifact`,
+  which would have broken releases in a way no CI run could have caught.
+  The workflow refuses to queue anything unless `main` actually requires
+  status checks, since otherwise auto-merge would merge immediately.
+
 ### Fixed
 
 - The dependency audit reported advisories against the CI runner's own build

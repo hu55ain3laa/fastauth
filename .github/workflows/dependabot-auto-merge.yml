@@ -1,0 +1,79 @@
+name: Dependabot auto-merge
+
+# Patch and minor dependency updates merge themselves once CI is green.
+# Major updates never do, and are labelled for review instead.
+#
+# The reason for that split is concrete: Dependabot proposed
+# actions/upload-artifact 4 -> 7 on its own, but publish.yml downloads that
+# artifact in a later job with actions/download-artifact. Bumping one without
+# the other would have broken releases. Dependabot cannot see relationships
+# like that, and no amount of CI would have caught it, because the artifact
+# handoff only runs during a real release.
+on:
+  pull_request:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read what kind of update this is
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # `gh pr merge --auto` queues a merge behind the branch's *required*
+      # status checks. If main has none, there is nothing to wait for and the
+      # merge happens immediately — CI green or not. That failure mode is
+      # silent and would ship unreviewed, untested dependency changes into an
+      # auth library, so refuse to queue anything until protection exists.
+      - name: Require that main actually gates on CI
+        id: gate
+        run: |
+          checks=$(gh api "repos/$GITHUB_REPOSITORY/branches/main/protection/required_status_checks" \
+                     --jq '.contexts | length' 2>/dev/null || echo "0")
+          if [ "$checks" -gt 0 ]; then
+            echo "main requires $checks status check(s); auto-merge will wait for them"
+            echo "safe=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "safe=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Auto-merge skipped. main has no required status checks, so --auto would merge immediately without waiting for CI. Enable branch protection on main and require the CI checks."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Queue patch and minor updates for merge
+        if: |
+          steps.gate.outputs.safe == 'true' && (
+            steps.meta.outputs.update-type == 'version-update:semver-patch' ||
+            steps.meta.outputs.update-type == 'version-update:semver-minor'
+          )
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Flag major updates for a human
+        if: steps.meta.outputs.update-type == 'version-update:semver-major'
+        run: |
+          gh pr edit "$PR_URL" --add-label "major-update"
+          gh pr comment "$PR_URL" --body "$(cat <<'EOF'
+          Held for review: this is a **major** version update, so auto-merge is deliberately skipped.
+
+          Worth checking before merging:
+
+          - Does anything else need to move with it? Paired actions such as `upload-artifact` and `download-artifact` must share a major version.
+          - Does the changelog mention removed inputs, dropped runtime versions, or changed defaults?
+          - Is the action deprecated in favour of a successor?
+
+          CI passing is necessary but not sufficient here; some breakage only shows up during a real release.
+          EOF
+          )"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
