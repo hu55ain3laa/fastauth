@@ -15,6 +15,8 @@ release can break your code. See
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-08-11
+
 ### Fixed
 
 - Authentication no longer blocks the event loop. Every route and dependency
@@ -261,7 +263,8 @@ Or use Alembic; see
 - `FastAuth` no longer exposes a shared `.session` attribute; pass a session to
   `authenticate_user(..., session=...)` or let it create one automatically
 
-[Unreleased]: https://github.com/hu55ain3laa/fastauth/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/hu55ain3laa/fastauth/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/hu55ain3laa/fastauth/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/hu55ain3laa/fastauth/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/hu55ain3laa/fastauth/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/hu55ain3laa/fastauth/releases/tag/v0.6.0

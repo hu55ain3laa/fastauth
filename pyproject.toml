@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastauth_iq"
-version = "0.8.0"
+version = "0.8.1"
 description = "A comprehensive authentication and authorization library for FastAPI with JWT, cookie support, role-based access control, and automatic database initialization"
 readme = "README.md"
 requires-python = ">=3.10"
