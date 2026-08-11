@@ -11,6 +11,13 @@ release can break your code. See
 
 ## [Unreleased]
 
+### Fixed
+
+- The dependency audit reported advisories against the CI runner's own build
+  tooling, which users never inherit from installing `fastauth_iq`. It now
+  audits the project's dependency tree rather than the whole environment, so a
+  finding means something users are actually exposed to.
+
 ## [0.8.0] - 2026-08-11
 
 ### Added

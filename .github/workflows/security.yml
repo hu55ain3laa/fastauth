@@ -49,18 +49,16 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install the package
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .
-
-      # Checks the resolved dependency tree against the Python Packaging
-      # Advisory Database. This is the check that would have flagged an
-      # unmaintained JWT library before it shipped to users.
+      # Audits the project's own dependency tree rather than the environment.
+      # Auditing the environment also reports the runner's build tooling — pip
+      # itself has advisories — which users never inherit from installing
+      # fastauth_iq, so those findings are noise that would train us to ignore
+      # this job. Passing the project path scopes it to what users actually get.
       - name: Audit Python dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install pip-audit
-          pip-audit --strict --progress-spinner off
+          pip-audit --strict --progress-spinner off .
 
   npm-audit:
     name: Docs dependency audit
