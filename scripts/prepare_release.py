@@ -89,6 +89,34 @@ def next_version(current: str, spec: str) -> str:
     raise SystemExit(f"Unknown bump {spec!r}: use major, minor, patch, auto, or an explicit X.Y.Z")
 
 
+def package_changed_since_last_release() -> tuple[bool, str]:
+    """Has anything users actually install changed since the last tag?
+
+    A version number describes the package, so bumping one for a change that
+    never reaches `fastauth/` publishes an identical distribution and spends a
+    version on nothing. CI workflows, the docs site and the changelog itself
+    are all invisible to someone running `pip install fastauth_iq`.
+
+    Returns (changed, tag). `changed` is True when there is no previous tag.
+    """
+    tag = subprocess.run(
+        ["git", "describe", "--tags", "--abbrev=0", "--match", "v*"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if tag.returncode != 0 or not tag.stdout.strip():
+        return True, ""
+
+    previous = tag.stdout.strip()
+    diff = subprocess.run(
+        ["git", "diff", "--quiet", f"{previous}..HEAD", "--", "fastauth/"],
+        cwd=ROOT,
+    )
+    # git diff --quiet exits 1 when there are differences.
+    return diff.returncode != 0, previous
+
+
 def unreleased_body(changelog: str) -> str:
     match = re.search(
         r"^## \[Unreleased\]\s*\n(.*?)(?=^## \[)", changelog, re.MULTILINE | re.DOTALL
@@ -158,6 +186,12 @@ def main() -> int:
     )
     parser.add_argument("--dry-run", action="store_true", help="Show changes, write nothing")
     parser.add_argument(
+        "--allow-unchanged-package",
+        action="store_true",
+        help="Release even though fastauth/ has not changed (e.g. a README fix, "
+        "which is shipped in the distribution and shown on PyPI)",
+    )
+    parser.add_argument(
         "--print-version",
         action="store_true",
         help="Print only the resulting version and exit, for scripts and CI",
@@ -166,6 +200,20 @@ def main() -> int:
 
     old = current_version()
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+    changed, previous = package_changed_since_last_release()
+    if not changed and not args.allow_unchanged_package:
+        raise SystemExit(
+            f"Nothing in fastauth/ has changed since {previous}.\n\n"
+            "Releasing would publish a distribution identical to the last one\n"
+            "and spend a version number on changes users cannot see. CI\n"
+            "workflows, the docs site and the changelog are not part of the\n"
+            "package.\n\n"
+            "Leave the notes under [Unreleased]; they ship with the next real\n"
+            "change. If this genuinely is releasable — a README fix, say, since\n"
+            "the README is shipped and shown on PyPI — pass\n"
+            "--allow-unchanged-package."
+        )
 
     spec, reason = args.bump, None
     if spec == "auto":

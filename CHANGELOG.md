@@ -4,30 +4,16 @@ All notable changes to FastAuth are documented here. This file is the source
 for GitHub release notes, so each version's section is what you see on the
 [releases page](https://github.com/hu55ain3laa/fastauth/releases).
 
+This file records changes to the **published package**. Repository tooling —
+CI workflows, the documentation site, release scripts — is not listed here,
+because none of it reaches someone running `pip install fastauth_iq`.
+
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and FastAuth follows [semantic versioning](https://semver.org): only a major
 release can break your code. See
 [Versioning](https://fastauth.pythowner.com/docs/versioning) for the full policy.
 
 ## [Unreleased]
-
-### Added
-
-- Dependabot pull requests for patch and minor updates now merge themselves
-  once CI is green. Major updates never do: they are labelled `major-update`
-  and commented with what to check. The split exists because Dependabot
-  proposed `upload-artifact` 4 to 7 without the paired `download-artifact`,
-  which would have broken releases in a way no CI run could have caught.
-  The workflow reads every check on the commit itself and merges only when
-  all of them have finished successfully, so no branch protection is needed
-  and `main` stays open for the release workflow to push to.
-
-### Fixed
-
-- The dependency audit reported advisories against the CI runner's own build
-  tooling, which users never inherit from installing `fastauth_iq`. It now
-  audits the project's dependency tree rather than the whole environment, so a
-  finding means something users are actually exposed to.
 
 ## [0.8.0] - 2026-08-11
 
